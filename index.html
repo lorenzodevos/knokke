@@ -623,7 +623,7 @@ const gate=$("gate"),pinIn=$("pinIn"),pinErr=$("pinErr");
 function askPin(wrong){gate.classList.add("open");pinErr.textContent=wrong?"Die pincode klopt niet.":"";pinIn.value="";setTimeout(()=>pinIn.focus(),50)}
 $("pinForm").addEventListener("submit",async e=>{e.preventDefault();const v=pinIn.value.trim();if(!v)return;pinErr.textContent="Controleren…";
   try{await call("checkPin",v);pin=v;try{localStorage.setItem("knokke-pin",v)}catch(e){}gate.classList.remove("open");refresh()}
-  catch(err){pinErr.textContent=isPinErr(err)?"Die pincode klopt niet.":"Geen verbinding. Probeer opnieuw."}});
+  catch(err){const m=String(err&&err.message||err);pinErr.textContent=isPinErr(err)?"Die pincode klopt niet.":(m==="NETWORK"?"Geen verbinding met de server. Controleer je internet.":m==="BAD_RESPONSE"?"De server antwoordt niet correct: publiceer in Apps Script een nieuwe versie met doPost.":"Serverfout: "+m)}});
 
 render();
 if(!pin)askPin(false);else refresh();

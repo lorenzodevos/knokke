@@ -1,6 +1,6 @@
 // Knokke 25K – service worker: app installeerbaar maken en snel laten openen.
 // Verhoog VERSION bij elke update zodat telefoons de nieuwe versie ophalen.
-const VERSION = "knokke-v1";
+const VERSION = "knokke-v2";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "favicon.png"];
 
 self.addEventListener("install", e => {
