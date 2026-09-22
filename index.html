@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F3B45">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knokke 25K">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<title>Knokke 25K – Lorenzo & Nele</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sea:#1F3B45; --sea-2:#2B4F5B; --mist:#EDF1F0; --paper:#FFFFFF;
+  --dune:#E2D3B3; --dune-2:#F3ECDD; --grass:#5F7F35; --ink:#18262C; --muted:#5E6E74; --line:#D6DEDD;
+  --lor:#2B72A0; --lor-soft:#DCEAF3; --nel:#B24A6C; --nel-soft:#F5DFE6;
+  --run:#C8553D; --tempo:#D98A2B; --lsd:#5F7F35; --kracht:#3F5E86; --rust:#98A4A8; --race:#C39A1E; --kino:#6F4A8E;
+  --primary:#1F3B45; --on-primary:#FFFFFF; --sel-border:#1F3B45;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",Helvetica,Arial,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --mist:#101A1E; --paper:#172429; --ink:#E6ECEC; --muted:#9AAAAE; --line:#2A3A40;
+    --dune-2:#22302F; --lor-soft:#1D3444; --nel-soft:#3A2230; --sea:#16323B; --sea-2:#1E3F4A;
+    --primary:#E9D9B6; --on-primary:#13211F; --sel-border:#E9D9B6;
+  }
+}
+:root[data-theme="dark"]{
+  --mist:#101A1E; --paper:#172429; --ink:#E6ECEC; --muted:#9AAAAE; --line:#2A3A40;
+  --dune-2:#22302F; --lor-soft:#1D3444; --nel-soft:#3A2230; --sea:#16323B; --sea-2:#1E3F4A;
+  --primary:#E9D9B6; --on-primary:#13211F; --sel-border:#E9D9B6;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--mist);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--tempo);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+
+/* HERO */
+header.hero{background:var(--sea);color:#F2F5F4;padding:22px 0 0;position:relative;overflow:hidden}
+.hero .wrap{position:relative;z-index:1}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.count{font-family:var(--display);font-weight:800;font-size:clamp(64px,16vw,128px);line-height:.82;letter-spacing:-1px}
+.count small{display:block;font-size:.26em;font-weight:600;letter-spacing:.5px;color:var(--dune);margin-top:10px;line-height:1.1}
+.race{font-family:var(--display);font-size:22px;font-weight:600;line-height:1.1;text-align:right;color:var(--dune)}
+.race b{display:block;color:#fff;font-size:30px;font-weight:700}
+.who{display:inline-flex;background:rgba(255,255,255,.1);border-radius:999px;padding:4px;margin-top:18px}
+.who button{border:0;background:transparent;color:#DDE5E4;padding:8px 18px;border-radius:999px;cursor:pointer;font-weight:600}
+.who button[aria-pressed="true"].lor{background:var(--lor);color:#fff}
+.who button[aria-pressed="true"].nel{background:var(--nel);color:#fff}
+.who-label{font-size:13px;color:#B9C7C9;margin:14px 0 0}
+.who.need{box-shadow:0 0 0 2px var(--tempo)}
+.who-label.need{color:#F3C27A;font-weight:600}
+/* dunes */
+.dunes{display:block;width:100%;height:56px;margin-top:10px}
+
+/* TIDE STRIP */
+.tide{background:var(--paper);border-radius:14px;margin:-8px 0 0;padding:16px 16px 12px;position:relative;z-index:2;box-shadow:0 1px 0 var(--line)}
+.tide h2,.section h2{font-family:var(--display);font-weight:700;font-size:24px;margin:0;letter-spacing:.2px}
+.tide-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tide-legend{display:flex;gap:14px;font-size:13px;color:var(--muted)}
+.tide-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.strip-scroll{overflow-x:auto;margin-top:10px;padding-bottom:4px}
+.strip{display:grid;grid-template-columns:repeat(8,minmax(88px,1fr));gap:8px;min-width:740px}
+.wk{border-radius:8px;padding:6px;cursor:pointer;border:1px solid transparent;background:transparent;text-align:left}
+.wk:hover{background:var(--dune-2)}
+.wk.sel{border-color:var(--sel-border);background:var(--dune-2)}
+.wk .wl{font-family:var(--display);font-weight:700;font-size:15px;display:flex;justify-content:space-between}
+.wk .wl span{color:var(--muted);font-weight:500}
+.cells{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-top:5px}
+.cell{height:9px;border-radius:2px;background:var(--line)}
+.cell.lor.d{background:var(--lor)}
+.cell.nel.d{background:var(--nel)}
+.cell.s{background:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 4px)}
+.cell.rest{background:transparent;border:1px dashed var(--line)}
+.cell.today{box-shadow:0 0 0 1.5px var(--tempo)}
+
+/* SUMMARY */
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.pcard{background:var(--paper);border-radius:12px;padding:14px 16px;border-left:5px solid var(--lor)}
+.pcard.nel{border-left-color:var(--nel)}
+.pcard h3{margin:0;font-family:var(--display);font-size:22px;font-weight:700}
+.pcard .big{font-family:var(--display);font-weight:700;font-size:36px;line-height:1;color:var(--ink)}
+.pcard .row{display:flex;gap:18px;margin-top:6px;flex-wrap:wrap}
+.pcard .row div{font-size:13px;color:var(--muted)}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--lor);border-radius:3px}
+.pcard.nel .bar i{background:var(--nel)}
+
+/* WEEK */
+.section{margin:22px 0}
+.week-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.week-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.nav{display:flex;gap:6px}
+.nav button{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:600}
+.nav button:disabled{opacity:.4;cursor:default}
+.day{display:grid;grid-template-columns:74px 1fr;gap:12px;background:var(--paper);border-radius:12px;padding:12px;margin-bottom:8px}
+.day.today{box-shadow:inset 0 0 0 2px var(--tempo)}
+.day.raceday{background:linear-gradient(0deg,var(--paper),var(--paper)) padding-box;box-shadow:inset 0 0 0 2px var(--race)}
+.dname{font-family:var(--display)}
+.dname b{display:block;font-size:30px;font-weight:700;line-height:.95}
+.dname span{font-size:15px;color:var(--muted);font-weight:600;text-transform:lowercase}
+.dname em{display:inline-block;margin-top:4px;font-style:normal;font-size:12px;background:var(--tempo);color:#fff;border-radius:4px;padding:0 6px;font-family:var(--body);font-weight:700}
+.sessions{display:flex;flex-direction:column;gap:8px}
+.sess{border-left:4px solid var(--rust);padding:2px 0 2px 10px}
+.sess .t{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sess .t strong{font-family:var(--display);font-size:21px;font-weight:700;line-height:1.1}
+.sess .t .slot{font-size:12px;font-weight:700;color:var(--muted)}
+.sess .t .km{font-family:var(--display);font-size:21px;font-weight:600;margin-left:auto}
+.sess .d{font-size:14px;color:var(--muted);margin-top:1px}
+.logs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 12px 5px 6px;font-size:14px;cursor:pointer;text-align:left}
+.chip .av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:none}
+.chip.lor .av{background:var(--lor)} .chip.nel .av{background:var(--nel)}
+.chip.done.lor{background:var(--lor-soft);border-color:var(--lor)}
+.chip.done.nel{background:var(--nel-soft);border-color:var(--nel)}
+.chip.skip{border-style:dashed;color:var(--muted)}
+.chip.other{cursor:default}
+.chip.mine:hover{border-color:var(--ink)}
+.event{margin-top:4px;background:var(--kino);color:#fff;border-radius:8px;padding:8px 12px}
+.event b{font-family:var(--display);font-size:19px;font-weight:700}
+.event span{display:block;font-size:13px;opacity:.85}
+
+/* FEED */
+.feed{background:var(--paper);border-radius:12px;padding:6px 16px}
+.feed li{list-style:none;padding:10px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.feed li:last-child{border-bottom:0}
+.feed ul{margin:0;padding:0}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none}
+.feed .when{color:var(--muted);font-size:13px}
+.empty{color:var(--muted);padding:14px 0;margin:0}
+
+.status{font-size:13px;color:var(--muted);margin:10px 0 0;display:flex;align-items:center;gap:7px}
+.status::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--lsd);flex:none}
+.status.warn::before{background:var(--run)}
+.status.busy::before{background:var(--tempo)}
+.status:empty::before{display:none}
+#pinErr::before{display:none}
+.status.warn{color:var(--run)}
+
+/* DIALOG */
+.sheet-bg{position:fixed;inset:0;background:rgba(12,24,28,.5);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.sheet-bg.open{display:flex}
+.sheet{background:var(--paper);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));max-height:92%;overflow:auto}
+@media (min-width:640px){.sheet-bg{align-items:center}.sheet{border-radius:16px}}
+.sheet h3{margin:0;font-family:var(--display);font-size:28px;font-weight:700;line-height:1}
+.sheet .sub{color:var(--muted);font-size:14px;margin:4px 0 14px}
+.seg{display:flex;gap:6px;margin-bottom:14px}
+.seg button{flex:1;border:1px solid var(--line);background:transparent;border-radius:8px;padding:10px;cursor:pointer;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary);border-color:var(--primary);box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--primary)}
+.seg button[aria-pressed="true"]::before{content:"✓ "}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px}
+input,textarea{display:block;width:100%;margin-top:4px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--mist);color:var(--ink);font:inherit}
+textarea{min-height:70px;resize:vertical}
+.feel{display:flex;gap:6px;margin-top:4px}
+.feel button{flex:1;border:1px solid var(--line);background:transparent;border-radius:8px;padding:8px 0;cursor:pointer;font-weight:700}
+.feel button[aria-pressed="true"]{background:var(--tempo);border-color:var(--tempo);color:#fff;box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--tempo)}
+.actions{display:flex;gap:8px;margin-top:6px}
+.actions button{flex:1;padding:12px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+.btn-save{background:var(--primary);color:var(--on-primary)}
+.btn-save:disabled{opacity:.6}
+.btn-sec{background:var(--mist);border:1px solid var(--line)!important}
+.btn-del{background:transparent;color:var(--run);flex:0 0 auto!important}
+@media (max-width:560px){
+  .summary{grid-template-columns:1fr}
+  .race{text-align:left}
+  .day{grid-template-columns:1fr;gap:6px}
+  .dname{display:flex;align-items:baseline;gap:8px}
+  .dname b{font-size:24px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .chip,.wk{transition:background .15s,border-color .15s}
+}
+
+/* PHOTOS & COMMENTS */
+.block{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+.block h4{margin:0 0 8px;font-family:var(--display);font-size:20px;font-weight:700}
+.photos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ph{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--dune-2);border:0;padding:0;cursor:pointer}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-weight:700;cursor:pointer;line-height:24px;padding:0}
+.ph.load::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:sh 1.2s infinite}
+@keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.addph{aspect-ratio:1;border:2px dashed var(--line);border-radius:8px;display:grid;place-items:center;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;text-align:center;padding:4px}
+.addph input{display:none}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.thread{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.cm{display:flex;gap:8px;align-items:flex-start}
+.cm .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:none}
+.cm .bub{background:var(--mist);border-radius:4px 12px 12px 12px;padding:7px 11px;font-size:15px;max-width:100%}
+.cm .meta{font-size:12px;color:var(--muted);margin-top:2px}
+.cm .meta button{border:0;background:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:12px;padding:0 0 0 6px}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.quick button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:14px}
+.quick button:hover{border-color:var(--ink)}
+.cform{display:flex;gap:6px}
+.cform input{margin:0}
+.cform button{border:0;background:var(--primary);color:var(--on-primary);border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer}
+.vstats{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:6px}
+.vstats div{font-size:13px;color:var(--muted)}
+.vstats b{display:block;font-family:var(--display);font-size:26px;color:var(--ink);line-height:1.1}
+.vnote{background:var(--dune-2);border-radius:10px;padding:10px 12px;font-size:15px;white-space:pre-wrap;margin-top:8px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);margin-left:2px}
+.chip.view{cursor:pointer}
+.chip.view:hover{border-color:var(--ink)}
+.newc{display:none;margin-top:12px;border:0;background:var(--tempo);color:#fff;border-radius:999px;padding:7px 14px;font-weight:700;cursor:pointer}
+.newc.show{display:inline-block}
+.feed li.unread{background:linear-gradient(90deg,rgba(217,138,43,.12),transparent)}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:80;padding:16px}
+.lightbox.open{display:flex}
+.lightbox img{max-width:100%;max-height:100%;border-radius:6px}
+@media (prefers-reduced-motion:reduce){.ph.load::after{animation:none}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-top">
+      <div class="count" id="count">–<small>dagen tot de start in Knokke</small></div>
+      <div class="race"><b>BESOX Trail Knokke</b>25 km · zondag 22 november 2026</div>
+    </div>
+    <p class="who-label" id="whoLabel">Wie ben jij op dit toestel?</p>
+    <div class="who" role="group" aria-label="Wie ben jij">
+      <button class="lor" data-who="lor" aria-pressed="false">Lorenzo</button>
+      <button class="nel" data-who="nel" aria-pressed="false">Nele</button>
+    </div>
+    <div><button class="newc" id="newc"></button></div>
+  </div>
+  <svg class="dunes" viewBox="0 0 1200 56" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 40 C120 10 220 12 330 34 S560 52 680 26 S900 4 1010 30 S1150 46 1200 30 V56 H0Z" fill="#E2D3B3" opacity=".35"/>
+    <path d="M0 48 C160 26 300 30 420 44 S700 56 820 40 S1060 24 1200 42 V56 H0Z" fill="var(--mist)"/>
+  </svg>
+</header>
+
+<main class="wrap">
+  <section class="tide" aria-labelledby="tide-h">
+    <div class="tide-head">
+      <h2 id="tide-h">Acht weken naar de start</h2>
+      <div class="tide-legend"><span><i style="background:var(--lor)"></i>Lorenzo</span><span><i style="background:var(--nel)"></i>Nele</span></div>
+    </div>
+    <div class="strip-scroll"><div class="strip" id="strip"></div></div>
+    <p class="status" id="status">Gegevens laden…</p>
+  </section>
+
+  <div class="summary" id="summary"></div>
+
+  <section class="section" aria-labelledby="week-h">
+    <div class="week-head">
+      <div><h2 id="week-h">Week</h2><p id="week-sub"></p></div>
+      <div class="nav"><button id="prev" aria-label="Vorige week">Vorige</button><button id="next" aria-label="Volgende week">Volgende</button></div>
+    </div>
+    <div id="days"></div>
+  </section>
+
+  <section class="section" aria-labelledby="feed-h">
+    <h2 id="feed-h" style="margin-bottom:10px">Laatst gelogd &amp; reacties</h2>
+    <div class="feed"><ul id="feed"></ul></div>
+  </section>
+</main>
+
+<div class="sheet-bg" id="sheetBg" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet">
+    <h3 id="sheetTitle">Training</h3>
+    <p class="sub" id="sheetSub"></p>
+    <div class="seg" role="group" aria-label="Status">
+      <button data-st="done" aria-pressed="true">Gedaan</button>
+      <button data-st="skip" aria-pressed="false">Overgeslagen</button>
+    </div>
+    <div id="runFields" class="grid2">
+      <label>Afstand (km)<input id="fKm" type="number" inputmode="decimal" step="0.1" min="0"></label>
+      <label>Duur (min)<input id="fMin" type="number" inputmode="numeric" min="0"></label>
+      <label>Gem. hartslag<input id="fHr" type="number" inputmode="numeric" min="0"></label>
+    </div>
+    <label id="durOnly" style="display:none">Duur (min)<input id="fMin2" type="number" inputmode="numeric" min="0"></label>
+    <label>Gevoel
+      <div class="feel" id="feel" role="group" aria-label="Gevoel van 1 tot 5">
+        <button data-f="1" aria-pressed="false">1</button><button data-f="2" aria-pressed="false">2</button><button data-f="3" aria-pressed="false">3</button><button data-f="4" aria-pressed="false">4</button><button data-f="5" aria-pressed="false">5</button>
+      </div>
+    </label>
+    <label>Boodschap<textarea id="fNote" placeholder="Hoe ging het? Zand, wind, benen… Nele en Lorenzo zien dit allebei."></textarea></label>
+    <div class="block">
+      <h4>Foto's</h4>
+      <div class="photos" id="editPhotos"></div>
+      <p class="hint">Maximaal 4 foto's. Nieuwe foto's worden opgeladen als je op Opslaan tikt.</p>
+    </div>
+    <div class="actions" style="margin-top:14px">
+      <button class="btn-del" id="btnDel">Wissen</button>
+      <button class="btn-sec" id="btnCancel">Annuleren</button>
+      <button class="btn-save" id="btnSave">Opslaan</button>
+    </div>
+    <div class="block" id="editThreadBlock">
+      <h4>Reacties</h4>
+      <div id="editThread"></div>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-bg" id="viewBg" role="dialog" aria-modal="true" aria-labelledby="viewTitle">
+  <div class="sheet">
+    <h3 id="viewTitle">Training</h3>
+    <p class="sub" id="viewSub"></p>
+    <div class="vstats" id="viewStats"></div>
+    <div id="viewNote"></div>
+    <div class="block" id="viewPhotoBlock"><h4>Foto's</h4><div class="photos" id="viewPhotos"></div></div>
+    <div class="block"><h4>Reacties</h4><div id="viewThread"></div></div>
+    <div class="actions" style="margin-top:14px"><button class="btn-sec" id="viewClose">Sluiten</button></div>
+  </div>
+</div>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Foto"><img id="lbImg" alt="Workoutfoto"></div>
+
+<div class="sheet-bg" id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+  <form class="sheet" id="pinForm">
+    <h3 id="gateTitle">Pincode</h3>
+    <p class="sub">Vul de pincode in die Lorenzo je gaf. Je toestel onthoudt ze.</p>
+    <label>Pincode<input id="pinIn" type="password" inputmode="numeric" autocomplete="off"></label>
+    <p class="status warn" id="pinErr" aria-live="polite"></p>
+    <div class="actions"><button class="btn-save" type="submit">Openen</button></div>
+  </form>
+</div>
+
+<script>
+(function(){
+const START=new Date(2026,8,28), RACE=new Date(2026,10,22);
+const DN=["Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag","Zondag"];
+const MN=["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+const NAMES={lor:"Lorenzo",nel:"Nele"};
+const MACRO=[[12,8,"Opbouw","Basistolerantie opbouwen in het zand."],[15,9,"Opbouw","Aerobe drempel verleggen."],[18,10,"Opbouw","Pezen en gewrichten harden voor duur-impact."],[12,8,"Deload","Zenuwstelsel flushen. Minder volume."],[20,11,"Opbouw","De muur verleggen. Test hydratatie en sportvoeding."],[22,12,"Piekbelasting","Mechanische grenzen opzoeken."],[14,8,"Tapering","Volume dropt, benen laten genezen."],[25,5,"Race","Uitbetaling van de discipline."]];
+const COL={INTERVAL:"var(--run)",TEMPO:"var(--tempo)",LSD:"var(--lsd)",KRACHT:"var(--kracht)",RUST:"var(--rust)",RACE:"var(--race)"};
+const QUICK=["Goed gedaan! 💪","Trots op jou ❤️","Beest! 🔥","Sterk volgehouden 👏"];
+const MAXPH=4;
+
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function fd(d){return d.getDate()+" "+MN[d.getMonth()]}
+function todayD(){const t=new Date();return new Date(t.getFullYear(),t.getMonth(),t.getDate())}
+function fmtKm(n){n=Number(n)||0;return (Math.round(n*10)/10).toString().replace(".",",")}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return"net nu";if(m<60)return m+" min geleden";const h=Math.round(m/60);if(h<24)return h+" u geleden";const d=new Date(ts);return fd(d)}
+const $=id=>document.getElementById(id);
+
+// Plan (schema 1: 3x kracht, 3x lopen, 1x absolute rust)
+function plan(w,i){
+  const [lsd,tempo]=MACRO[w];
+  const S=(slot,type,title,km,detail)=>({slot,type,title,km,detail,run:["INTERVAL","TEMPO","LSD","RACE"].includes(type)});
+  switch(i){
+    case 0:return[S("dag","KRACHT","Upper 1",null,"Borst, rug, schouders & core. Geen spierfalen. Benen genezen van de LSD.")];
+    case 1:return[S("dag","INTERVAL","Interval",4.8,"VO2 max op asfalt. 15 min opwarmen · 6× 800 m Zone 4 · 90 sec wandelen · 15 min cooldown")];
+    case 2:return[S("dag","KRACHT","Lower",null,"Squats, extensions, calf raises. Max 3 sets, max 80% 1RM. Trillen de benen nog? Schrappen, nooit doorschuiven.")];
+    case 3:return w===7?[S("dag","TEMPO","Shakeout",5,"Rustige shakeout, losse benen.")]:[S("dag","TEMPO","Tempo",tempo,`Asfalt/gras. 2 km Zone 2 · ${tempo-4} km Zone 3 · 2 km Zone 2`)];
+    case 4:return[S("dag","KRACHT","Upper 2",null,"Isolatie armen, zware focus buikspieren voor rompstabiliteit in mul zand.")];
+    case 5:return[S("dag","RUST","Absolute rust",null,"Fysiologische lockdown. Geen actieve recuperatie. Water, elektrolyten, koolhydraten.")];
+    case 6:return w===7?[S("dag","RACE","BESOX Trail Knokke",25,"Racedag. Uitbetaling van de discipline.")]:[S("dag","LSD","LSD trail",lsd,"Onverhard, 100% Zone 2. Hartslag te hoog in zand: wandelen.")];
+  }
+}
+function slotKey(s){return s.slot==="avond"?"pm":"am"}
+function logId(p,date,slot){return p+"_"+date+"_"+slot}
+function sessFor(id){const [p,d,slot]=id.split("_");const dd=new Date(d+"T00:00:00");const n=Math.floor((dd-START)/864e5);if(n<0||n>55)return null;const w=Math.floor(n/7),i=n%7;const s=plan(w,i).find(x=>slotKey(x)===slot);return s?{s,w,i,dd,p,d,slot}:null}
+
+// State
+let who=null;try{who=localStorage.getItem("knokke-who")}catch(e){}
+let logs={},comments=[],pin=null;try{pin=localStorage.getItem("knokke-pin")}catch(e){}
+let lastSeen=0;try{lastSeen=Number(localStorage.getItem("knokke-seen-"+who))||0}catch(e){}
+const photoCache={};
+let week=0;const t0=todayD();
+const diffDays=Math.floor((t0-START)/864e5);if(diffDays>=0&&diffDays<56)week=Math.floor(diffDays/7);
+function commentsOf(id){return comments.filter(c=>c.logId===id).sort((a,b)=>a.createdAt-b.createdAt)}
+
+// Countdown
+const left=Math.round((RACE-t0)/864e5);
+$("count").firstChild.nodeValue=left>0?left:(left===0?"Vandaag!":"Gefinisht");
+if(left===1)document.querySelector("#count small").textContent="dag tot de start in Knokke";
+
+function renderWho(){document.querySelectorAll(".who button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.who===who)));
+  const need=!who;document.querySelector(".who").classList.toggle("need",need);$("whoLabel").classList.toggle("need",need);
+  $("whoLabel").textContent=need?"Tik eerst op je naam om te kunnen loggen":"Ingelogd als "+NAMES[who]+" op dit toestel";}
+function idleStatus(){if(!pin)return;setStatus(who?"Gedeeld: de ander ziet je logs en reacties binnen een halve minuut.":"Tik bovenaan op je naam om te beginnen.")}
+document.querySelectorAll(".who button").forEach(b=>b.addEventListener("click",()=>{who=b.dataset.who;try{localStorage.setItem("knokke-who",who);lastSeen=Number(localStorage.getItem("knokke-seen-"+who))||0}catch(e){}renderWho();render();idleStatus()}));
+renderWho();
+
+function weekStats(w,p){let planned=0,done=0,kmPlan=0,km=0;
+  for(let i=0;i<7;i++){const d=iso(addDays(START,w*7+i));
+    plan(w,i).forEach(s=>{if(s.type==="RUST")return;planned++;if(s.km)kmPlan+=s.km;
+      const l=logs[logId(p,d,slotKey(s))];if(l&&l.status==="done"){done++;if(l.km)km+=Number(l.km)||0}})}
+  return{planned,done,kmPlan,km}}
+function totalStats(p){let d=0,pl=0,km=0;for(let w=0;w<8;w++){const s=weekStats(w,p);d+=s.done;pl+=s.planned;km+=s.km}return{d,pl,km}}
+
+// Unread = reacties van de ander op mijn logs, of op logs waar ik op reageerde, na lastSeen
+function unread(){if(!who)return[];return comments.filter(c=>c.author!==who&&c.createdAt>lastSeen&&(c.logId.indexOf(who+"_")===0||comments.some(x=>x.logId===c.logId&&x.author===who)))}
+function markSeen(){lastSeen=Date.now();try{localStorage.setItem("knokke-seen-"+who,String(lastSeen))}catch(e){}}
+
+function render(){
+  // strip
+  const strip=$("strip");strip.innerHTML="";
+  for(let w=0;w<8;w++){
+    const b=document.createElement("button");b.className="wk"+(w===week?" sel":"");b.setAttribute("aria-label","Week "+(w+1));
+    const ws=addDays(START,w*7);let html=`<div class="wl">W${w+1}<span>${fd(ws)}</span></div>`;
+    ["lor","nel"].forEach(p=>{html+=`<div class="cells">`;
+      for(let i=0;i<7;i++){const dd=addDays(START,w*7+i),d=iso(dd),ss=plan(w,i);let cls="cell";
+        if(ss.every(s=>s.type==="RUST"))cls+=" rest";
+        else{const st=ss.map(s=>logs[logId(p,d,slotKey(s))]).filter(Boolean);if(st.some(l=>l.status==="done"))cls+=" "+p+" d";else if(st.length)cls+=" s"}
+        if(+dd===+t0)cls+=" today";html+=`<div class="${cls}" title="${NAMES[p]} · ${DN[i]} ${fd(dd)}"></div>`}
+      html+=`</div>`});
+    b.innerHTML=html;b.addEventListener("click",()=>{week=w;render()});strip.appendChild(b)}
+  // summary
+  const sum=$("summary");sum.innerHTML="";
+  ["lor","nel"].forEach(p=>{const ws=weekStats(week,p),tot=totalStats(p);const pct=ws.planned?Math.round(ws.done/ws.planned*100):0;
+    const el=document.createElement("div");el.className="pcard "+p;
+    el.innerHTML=`<h3>${NAMES[p]}</h3><div class="row"><div><span class="big">${ws.done}/${ws.planned}</span><br>sessies deze week</div><div><span class="big">${fmtKm(ws.km)}</span><br>van ${fmtKm(ws.kmPlan)} km gelopen</div></div><div class="bar"><i style="width:${pct}%"></i></div><div class="row"><div>Totaal: ${tot.d}/${tot.pl} sessies · ${fmtKm(tot.km)} km</div></div>`;
+    sum.appendChild(el)});
+  // week
+  const [,,fase,doel]=MACRO[week];const ws=addDays(START,week*7);
+  $("week-h").textContent=`Week ${week+1} · ${fase}`;$("week-sub").textContent=`${fd(ws)} – ${fd(addDays(ws,6))} · ${doel}`;
+  $("prev").disabled=week===0;$("next").disabled=week===7;
+  const days=$("days");days.innerHTML="";
+  for(let i=0;i<7;i++){
+    const dd=addDays(START,week*7+i),d=iso(dd),ss=plan(week,i);
+    const el=document.createElement("div");el.className="day"+(+dd===+t0?" today":"")+(ss[0].type==="RACE"?" raceday":"");
+    let h=`<div class="dname"><b>${dd.getDate()} ${MN[dd.getMonth()]}</b><span>${DN[i]}</span>${+dd===+t0?"<em>vandaag</em>":""}</div><div class="sessions">`;
+    ss.forEach(s=>{
+      h+=`<div class="sess" style="border-left-color:${COL[s.type]}"><div class="t">${s.slot!=="dag"?`<span class="slot">${s.slot}</span>`:""}<strong>${s.title}</strong>${s.km?`<span class="km">${s.type==="INTERVAL"?"6×800 m":s.km+" km"}</span>`:""}</div><div class="d">${s.detail}</div>`;
+      if(s.type!=="RUST"){h+=`<div class="logs">`;
+        ["lor","nel"].forEach(p=>{const id=logId(p,d,slotKey(s));const l=logs[id];const mine=p===who;
+          const nc=commentsOf(id).length,np=l&&l.photos?l.photos.length:0;
+          let txt=l?(l.status==="done"?"Gedaan"+(l.km?` · ${fmtKm(l.km)} km`:"")+(l.min?` · ${l.min} min`:"")+(l.feel?` · gevoel ${l.feel}/5`:""):"Overgeslagen"):(mine?"Log jouw sessie":"Nog niet gelogd");
+          const extra=(np?`<span class="badge">📷 ${np}</span>`:"")+(nc?`<span class="badge">💬 ${nc}</span>`:"");
+          const cls=`chip ${p} ${l?(l.status==="done"?"done":"skip"):""} ${mine?"mine":(l?"view":"other")}`;
+          const attr=mine?`data-log="${id}"`:(l?`data-view="${id}"`:'tabindex="-1" aria-disabled="true"');
+          h+=`<button class="${cls}" ${attr}><span class="av">${NAMES[p][0]}</span>${esc(txt)}${extra}</button>`});
+        h+=`</div>`}
+      h+=`</div>`});
+    if(d==="2026-11-20")h+=`<div class="event"><b>Etentje in Kino Gent</b><span>Beloning voor al ons harde werk</span></div>`;
+    h+=`</div>`;el.innerHTML=h;days.appendChild(el)}
+  days.querySelectorAll("[data-log]").forEach(b=>b.addEventListener("click",()=>openEdit(b.dataset.log)));
+  days.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>openView(b.dataset.view)));
+  // unread
+  const un=unread();const nb=$("newc");
+  if(un.length){nb.textContent=un.length===1?"1 nieuwe reactie":un.length+" nieuwe reacties";nb.classList.add("show")}else nb.classList.remove("show");
+  // feed
+  const items=[];
+  Object.values(logs).forEach(l=>items.push({t:l.updatedAt||0,kind:"log",l}));
+  comments.forEach(c=>items.push({t:c.createdAt,kind:"c",c}));
+  items.sort((a,b)=>b.t-a.t);
+  const feed=$("feed");const top=items.slice(0,15);
+  if(!top.length){feed.innerHTML=`<li class="empty">Nog niets gelogd. Kies wie je bent en tik op een sessie om ze af te vinken.</li>`}
+  else feed.innerHTML=top.map(it=>{
+    if(it.kind==="log"){const l=it.l,dd=new Date(l.date+"T00:00:00");
+      const what=l.status==="done"?`${esc(l.title||"sessie")} gedaan${l.km?` · ${fmtKm(l.km)} km`:""}${l.min?` · ${l.min} min`:""}`:`${esc(l.title||"sessie")} overgeslagen`;
+      const np=l.photos?l.photos.length:0;
+      return `<li data-open="${esc(l.id)}" style="cursor:pointer"><span class="dot" style="background:var(--${l.person})"></span><div><b>${NAMES[l.person]}</b> ${what}${np?` · 📷 ${np}`:""}<div class="when">${DN[(dd.getDay()+6)%7]} ${fd(dd)}${l.note?" · “"+esc(l.note)+"”":""}</div></div></li>`}
+    const c=it.c;const target=logs[c.logId];const owner=c.logId.split("_")[0];
+    const whose=owner===c.author?"eigen":(owner===who?"jouw":NAMES[owner]+"'s");
+    const isUn=un.includes(c);
+    return `<li data-open="${esc(c.logId)}" class="${isUn?"unread":""}" style="cursor:pointer"><span class="dot" style="background:var(--${c.author})"></span><div><b>${NAMES[c.author]}</b> reageerde op ${whose} ${esc(target?target.title:"sessie")}: “${esc(c.text)}”<div class="when">${ago(c.createdAt)}</div></div></li>`}).join("");
+  feed.querySelectorAll("[data-open]").forEach(li=>li.addEventListener("click",()=>{const id=li.dataset.open;if(!logs[id])return;if(id.indexOf(who+"_")===0)openEdit(id);else openView(id)}));
+}
+$("prev").addEventListener("click",()=>{if(week>0){week--;render()}});
+$("next").addEventListener("click",()=>{if(week<7){week++;render()}});
+$("newc").addEventListener("click",()=>{const un=unread();markSeen();render();if(un.length){const id=un[un.length-1].logId;if(id.indexOf(who+"_")===0)openEdit(id);else openView(id)}});
+
+// ---------- photos ----------
+function loadPhoto(fid,img,wrap){
+  if(photoCache[fid]){img.src=photoCache[fid];wrap.classList.remove("load");return}
+  call("getPhoto",pin,fid).then(u=>{photoCache[fid]=u;img.src=u;wrap.classList.remove("load")}).catch(()=>{wrap.classList.remove("load");wrap.title="Foto kon niet geladen worden"})}
+function photoTile(src,fid,onRemove){
+  const w=document.createElement("div");w.className="ph"+(fid&&!src?" load":"");
+  const img=document.createElement("img");img.alt="Workoutfoto";w.appendChild(img);
+  if(src)img.src=src;else if(fid)loadPhoto(fid,img,w);
+  img.addEventListener("click",()=>{if(img.src){$("lbImg").src=img.src;$("lightbox").classList.add("open")}});
+  if(onRemove){const x=document.createElement("button");x.className="x";x.type="button";x.setAttribute("aria-label","Foto verwijderen");x.textContent="×";x.addEventListener("click",e=>{e.stopPropagation();onRemove()});w.appendChild(x)}
+  return w}
+$("lightbox").addEventListener("click",()=>$("lightbox").classList.remove("open"));
+function resize(file){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{
+  const max=1400;let{width:w,height:h}=im;if(w>max||h>max){const k=max/Math.max(w,h);w=Math.round(w*k);h=Math.round(h*k)}
+  const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);res(c.toDataURL("image/jpeg",0.8))};im.src=r.result};r.readAsDataURL(file)})}
+
+// ---------- comments ----------
+function renderThread(box,id){
+  box.innerHTML="";
+  const t=document.createElement("div");t.className="thread";
+  const list=commentsOf(id);
+  if(!list.length){const p=document.createElement("p");p.className="hint";p.style.margin="0";p.textContent="Nog geen reacties.";t.appendChild(p)}
+  list.forEach(c=>{const el=document.createElement("div");el.className="cm";
+    el.innerHTML=`<span class="av" style="background:var(--${c.author})">${NAMES[c.author][0]}</span><div><div class="bub">${esc(c.text)}</div><div class="meta">${NAMES[c.author]} · ${ago(c.createdAt)}${c.author===who?` <button data-del="${esc(c.id)}">verwijderen</button>`:""}</div></div>`;
+    t.appendChild(el)});
+  box.appendChild(t);
+  t.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",async()=>{b.disabled=true;try{applyData(await call("deleteComment",pin,b.dataset.del,who));renderThread(box,id)}catch(e){b.disabled=false;setStatus("Verwijderen lukte niet.",true)}}));
+  if(!who){const p=document.createElement("p");p.className="hint";p.textContent="Kies eerst wie je bent om te reageren.";box.appendChild(p);return}
+  const owner=id.split("_")[0];
+  if(owner!==who){const q=document.createElement("div");q.className="quick";
+    QUICK.forEach(txt=>{const b=document.createElement("button");b.type="button";b.textContent=txt;b.addEventListener("click",()=>send(txt,b));q.appendChild(b)});box.appendChild(q)}
+  const f=document.createElement("form");f.className="cform";
+  f.innerHTML=`<input type="text" maxlength="500" placeholder="${owner===who?"Antwoord of extra boodschap…":"Schrijf een reactie…"}" aria-label="Reactie"><button type="submit">Stuur</button>`;
+  box.appendChild(f);
+  const inp=f.querySelector("input");
+  f.addEventListener("submit",e=>{e.preventDefault();const v=inp.value.trim();if(v)send(v,f.querySelector("button"))});
+  async function send(text,btn){btn.disabled=true;
+    try{applyData(await call("addComment",pin,id,who,text));markSeen();renderThread(box,id);render()}
+    catch(e){btn.disabled=false;setStatus(String(e&&e.message||e).indexOf("NO_LOG")>=0?"Deze sessie bestaat niet meer.":"Reactie versturen lukte niet. Probeer opnieuw.",true)}}
+}
+
+// ---------- view sheet (andermans workout) ----------
+let viewId=null;
+function openView(id){
+  const l=logs[id];const info=sessFor(id);if(!l||!info)return;viewId=id;
+  $("viewTitle").textContent=`${NAMES[l.person]} · ${info.s.title}`;
+  $("viewSub").textContent=`${DN[info.i]} ${fd(info.dd)} · ${l.status==="done"?"gedaan":"overgeslagen"}`;
+  const st=[];if(l.km)st.push(["km",fmtKm(l.km)]);if(l.min)st.push(["minuten",l.min]);if(l.hr)st.push(["gem. hartslag",l.hr]);if(l.feel)st.push(["gevoel",l.feel+"/5"]);
+  $("viewStats").innerHTML=st.map(([k,v])=>`<div><b>${esc(v)}</b>${k}</div>`).join("");
+  $("viewNote").innerHTML=l.note?`<div class="vnote">${esc(l.note)}</div>`:"";
+  const ph=$("viewPhotos");ph.innerHTML="";(l.photos||[]).forEach(fid=>ph.appendChild(photoTile(null,fid)));
+  $("viewPhotoBlock").style.display=(l.photos&&l.photos.length)?"block":"none";
+  renderThread($("viewThread"),id);
+  if(unread().some(c=>c.logId===id)){markSeen();render()}
+  $("viewBg").classList.add("open");$("viewClose").focus();
+}
+function closeView(){$("viewBg").classList.remove("open");viewId=null}
+$("viewClose").addEventListener("click",closeView);
+$("viewBg").addEventListener("click",e=>{if(e.target===$("viewBg"))closeView()});
+
+// ---------- edit sheet (eigen workout) ----------
+let cur=null,st="done",feel=0,staged=[];
+const bg=$("sheetBg");
+function openEdit(id){
+  if(!who)return;const info=sessFor(id);if(!info)return;const s=info.s;const l=logs[id];
+  cur={id,d:info.d,slot:info.slot,s};staged=[];
+  $("sheetTitle").textContent=s.title;
+  $("sheetSub").textContent=`${NAMES[who]} · ${DN[info.i]} ${fd(info.dd)}${s.km?` · gepland ${s.type==="INTERVAL"?"6× 800 m":s.km+" km"}`:""}`;
+  st=l?l.status:"done";feel=l&&l.feel?Number(l.feel):0;
+  $("runFields").style.display=s.run?"grid":"none";$("durOnly").style.display=s.run?"none":"block";
+  $("fKm").value=l&&l.km!=null?l.km:(s.km&&s.type!=="INTERVAL"?s.km:"");
+  $("fMin").value=l&&l.min?l.min:"";$("fMin2").value=l&&l.min?l.min:"";
+  $("fHr").value=l&&l.hr?l.hr:"";$("fNote").value=l&&l.note?l.note:"";
+  $("btnDel").style.visibility=l?"visible":"hidden";
+  renderEditPhotos();
+  $("editThreadBlock").style.display=l?"block":"none";if(l)renderThread($("editThread"),id);
+  if(l&&unread().some(c=>c.logId===id)){markSeen();render()}
+  syncSeg();bg.classList.add("open");$("btnSave").focus();
+}
+function renderEditPhotos(){
+  const box=$("editPhotos");box.innerHTML="";if(!cur)return;
+  const l=logs[cur.id];const existing=l&&l.photos?l.photos:[];
+  existing.forEach(fid=>box.appendChild(photoTile(null,fid,async()=>{
+    if(!confirm("Deze foto verwijderen?"))return;
+    try{applyData(await call("removePhoto",pin,cur.id,who,fid));renderEditPhotos()}catch(e){setStatus("Foto verwijderen lukte niet.",true)}})));
+  staged.forEach((u,k)=>box.appendChild(photoTile(u,null,()=>{staged.splice(k,1);renderEditPhotos()})));
+  if(existing.length+staged.length<MAXPH){
+    const lab=document.createElement("label");lab.className="addph";lab.innerHTML=`<span>+ Foto</span><input type="file" accept="image/*" multiple>`;
+    lab.querySelector("input").addEventListener("change",async e=>{
+      const files=[...e.target.files].slice(0,MAXPH-existing.length-staged.length);
+      for(const f of files){try{staged.push(await resize(f))}catch(err){setStatus("Die foto kon niet gelezen worden.",true)}}
+      renderEditPhotos()});
+    box.appendChild(lab)}
+}
+function syncSeg(){document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.st===st)));
+  document.querySelectorAll("#feel button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.f===feel)))}
+document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{st=b.dataset.st;syncSeg()}));
+document.querySelectorAll("#feel button").forEach(b=>b.addEventListener("click",()=>{feel=+b.dataset.f===feel?0:+b.dataset.f;syncSeg()}));
+function closeEdit(){bg.classList.remove("open");cur=null;staged=[]}
+$("btnCancel").addEventListener("click",closeEdit);
+bg.addEventListener("click",e=>{if(e.target===bg)closeEdit()});
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if($("lightbox").classList.contains("open"))$("lightbox").classList.remove("open");else if(bg.classList.contains("open"))closeEdit();else if($("viewBg").classList.contains("open"))closeView()});
+
+$("btnSave").addEventListener("click",async()=>{
+  if(!cur)return;const s=cur.s;const num=v=>v===""?null:Number(v);
+  const data={person:who,date:cur.d,slot:cur.slot,title:s.title,type:s.type,status:st,
+    km:s.run&&st==="done"?num($("fKm").value):null,
+    min:st==="done"?num($(s.run?"fMin":"fMin2").value):null,
+    hr:s.run&&st==="done"?num($("fHr").value):null,
+    feel:feel||null,note:$("fNote").value.trim().slice(0,1000)};
+  const id=cur.id,toUpload=staged.slice();closeEdit();
+  logs[id]=Object.assign({},logs[id]||{photos:[]},data,{id,updatedAt:Date.now()});render();
+  saving++;setStatus("Opslaan…");
+  try{
+    let res=await call("saveLog",pin,data);
+    for(let k=0;k<toUpload.length;k++){setStatus(`Foto ${k+1} van ${toUpload.length} opladen…`);res=await call("uploadPhoto",pin,id,who,toUpload[k])}
+    saving--;applyData(res);setStatus("Opgeslagen.");
+  }catch(e){saving--;setStatus(String(e&&e.message||e).indexOf("MAX_PHOTOS")>=0?"Maximaal 4 foto's per sessie.":"Opslaan lukte niet. Controleer je verbinding en probeer opnieuw.",true);refresh()}
+});
+$("btnDel").addEventListener("click",async()=>{
+  if(!cur)return;if(!confirm("Deze sessie wissen? Foto's en reacties verdwijnen ook."))return;
+  const id=cur.id;closeEdit();delete logs[id];render();saving++;setStatus("Wissen…");
+  try{const res=await call("deleteLog",pin,id);saving--;applyData(res);setStatus("Gewist.")}catch(e){saving--;setStatus("Wissen lukte niet. Probeer opnieuw.",true);refresh()}
+});
+
+// ---------- server ----------
+let stTimer=null;
+function setStatus(msg,warn){const el=$("status");el.textContent=msg;const busy=/…$/.test(msg);el.className="status"+(warn?" warn":busy?" busy":"");
+  clearTimeout(stTimer);if(!warn&&!busy&&/^(Opgeslagen|Gewist)/.test(msg))stTimer=setTimeout(idleStatus,4000)}
+// Adres van jullie Apps Script (de /exec-link)
+const API_URL="https://script.google.com/macros/s/AKfycbwtPBd75X4si1JDTjtXuhRANLHtLvVxINloLdSGSoeFHkKMTGpovHkSwOjtiwKZRp3q/exec";
+async function call(fn,...args){
+  let r;
+  try{r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({fn,args}),redirect:"follow"})}
+  catch(e){throw new Error("NETWORK")}
+  if(!r.ok)throw new Error("HTTP_"+r.status);
+  let j;try{j=await r.json()}catch(e){throw new Error("BAD_RESPONSE")}
+  if(!j.ok)throw new Error(j.error||"ERROR");
+  return j.data;
+}
+function applyData(d){const n={};((d&&d.logs)||[]).forEach(l=>{n[l.id]=l});logs=n;comments=(d&&d.comments)||[];render();
+  if(viewId&&$("viewBg").classList.contains("open")){const box=$("viewThread");if(!box.contains(document.activeElement))renderThread(box,viewId)}}
+function isPinErr(e){return e&&String(e.message||e).indexOf("PIN_WRONG")>=0}
+let saving=0;
+async function refresh(){if(!pin||saving)return;
+  try{applyData(await call("getData",pin));const cur=$("status");if(cur.classList.contains("warn")||!/^(Opgeslagen|Gewist|Foto)/.test(cur.textContent))idleStatus()}
+  catch(e){if(isPinErr(e))askPin(true);else setStatus("Kon de gegevens niet ophalen. Controleer je verbinding.",true)}}
+
+// PIN gate
+const gate=$("gate"),pinIn=$("pinIn"),pinErr=$("pinErr");
+function askPin(wrong){gate.classList.add("open");pinErr.textContent=wrong?"Die pincode klopt niet.":"";pinIn.value="";setTimeout(()=>pinIn.focus(),50)}
+$("pinForm").addEventListener("submit",async e=>{e.preventDefault();const v=pinIn.value.trim();if(!v)return;pinErr.textContent="Controleren…";
+  try{await call("checkPin",v);pin=v;try{localStorage.setItem("knokke-pin",v)}catch(e){}gate.classList.remove("open");refresh()}
+  catch(err){pinErr.textContent=isPinErr(err)?"Die pincode klopt niet.":"Geen verbinding. Probeer opnieuw."}});
+
+render();
+if(!pin)askPin(false);else refresh();
+setInterval(()=>{if(document.visibilityState==="visible")refresh()},30000);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refresh()});
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})})}
+})();
+</script>
+</body>
+</html>
