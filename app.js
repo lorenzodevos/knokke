@@ -273,8 +273,22 @@ function findDate(t){let m;
   if((m=t.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/)))return{iso:mkIso(m[1],m[2],m[3]),m:m[0]};
   if((m=t.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/)))return{iso:mkIso(m[3],m[2],m[1]),m:m[0]};
   if((m=t.match(/\b(\d{1,2})\s+([a-z]{3,9})\.?(?:\s+(\d{4}))?\b/i))&&MONTHS[m[2].toLowerCase()]){const mo=MONTHS[m[2].toLowerCase()];return{iso:mkIso(m[3]||inferYear(mo,+m[1]),mo,m[1]),m:m[0]}}
-  if((m=t.match(/(?:^|[^\d])(\d{1,2})\/(\d{1,2})(?![\d\/])/)))return{iso:mkIso(inferYear(+m[2],+m[1]),m[2],m[1]),m:m[0].replace(/^[^\d]/,"")};
+  if((m=t.match(/(?:^|[\s(,:·|])(\d{1,2})[\/.-](\d{1,2})(?![\d\/.,-]|\s*(?:km|m|min|sec|%|kg)\b)/i)))return{iso:mkIso(inferYear(+m[2],+m[1]),m[2],m[1]),m:m[0].replace(/^[\s(,:·|]/,"")};
   return null}
+// --- weekdagen ---
+const WD_IDX={maandag:1,ma:1,monday:1,mon:1,dinsdag:2,di:2,tuesday:2,tue:2,woensdag:3,wo:3,wednesday:3,wed:3,donderdag:4,do:4,thursday:4,thu:4,vrijdag:5,vr:5,friday:5,fri:5,zaterdag:6,za:6,saturday:6,sat:6,zondag:0,zo:0,sunday:0,sun:0};
+const WD_FULL="maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|monday|tuesday|wednesday|thursday|friday|saturday|sunday";
+function weekdayAtStart(t){const m=String(t).trim().match(new RegExp("^("+WD_FULL+"|ma|di|wo|do|vr|za|zo|mon|tue|wed|thu|fri|sat|sun)\\b\\.?","i"));return m?WD_IDX[m[1].toLowerCase()]:null}
+// Meerdere trainingen op één lijn opsplitsen, bv. "maandag 26-09 upper dinsdag 27/09 lower"
+const SPLIT_RE=new RegExp("\\b(?:"+WD_FULL+")\\b|\\b(?:ma|di|wo|do|vr|za|zo|mon|tue|wed|thu|fri|sat|sun)\\.?(?=\\s*\\d)|(?:^|(?<=[\\s(,:·|]))\\d{4}-\\d{1,2}-\\d{1,2}|(?:^|(?<=[\\s(,:·|]))\\d{1,2}[\\/.-]\\d{1,2}(?:[\\/.-]\\d{4})?(?![\\d\\/.,-]|\\s*(?:km|m|min|sec|%|kg)\\b)","gi");
+function splitEntries(line){if(/^\s*(doel|goal|event|evenement)\b/i.test(line))return[line];
+  const starts=[];let m;SPLIT_RE.lastIndex=0;let prevEnd=-1,prevWasWd=false;
+  while((m=SPLIT_RE.exec(line))){const isWd=/^[a-z]/i.test(m[0]);const gap=line.slice(prevEnd,m.index);
+    if(isWd||!(prevWasWd&&/^\s*$/.test(gap)))starts.push(m.index);prevEnd=m.index+m[0].length;prevWasWd=isWd;if(m[0]==="")SPLIT_RE.lastIndex++}
+  if(starts.length<2)return[line];
+  const out=[];if(starts[0]>0&&line.slice(0,starts[0]).trim())out.push(line.slice(0,starts[0]));
+  starts.forEach((st,k)=>{const seg=line.slice(st,k+1<starts.length?starts[k+1]:undefined).trim().replace(/[,;·|\-–]+$/,"").trim();if(seg)out.push(seg)});
+  return out}
 function impDate(v){const f=findDate(String(v||"").trim());return f?f.iso:null}
 // --- soort training herkennen ---
 function kindFromText(t){t=" "+String(t||"").toLowerCase()+" ";
@@ -294,8 +308,8 @@ const WEEKDAY=/^(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|mond
 const HEAD={date:/^(datum|date|dag|day)$/i,kind:/^(soort|type|categorie|sport)$/i,title:/^(titel|training|workout|sessie|title|naam)$/i,detail:/^(uitleg|omschrijving|details?|beschrijving|notitie|inhoud|description)$/i,km:/^(km|afstand|distance|kilometers?)$/i};
 // --- rijen (van eender welk formaat) omzetten naar een plan ---
 function parseRows(rows){
-  const res={goal:null,items:[],errors:[]};let map=null;
-  rows.forEach((row,i)=>{
+  const res={goal:null,items:[],errors:[],warnings:[]};let map=null,lastDate=null;
+  rows.forEach((row,ri)=>{const i=(row.line||ri+1)-1;
     row=row.map(c=>String(c==null?"":c).replace(/\s+/g," ").trim());while(row.length&&!row[row.length-1])row.pop();
     const join=row.filter(Boolean).join(" · ");if(!join)return;
     if(/^(#|\/\/)/.test(join)||/^voltage plan$/i.test(join))return;
@@ -319,7 +333,12 @@ function parseRows(rows){
       kind=kindOf(kc,title+" "+detail);
       if(!map&&!IMP_KIND[(kc||"").toLowerCase()]&&!title){title=kc||""}
     }else{
-      const f=findDate(join);if(!f){if(/\d/.test(join)&&kindFromText(join))res.errors.push(`Lijn ${i+1}: geen datum gevonden in “${join.slice(0,60)}”.`);return}
+      let f=findDate(join);const wd=weekdayAtStart(join);
+      if(!f&&wd!=null&&kindFromText(join.replace(WEEKDAY,""))){ // enkel een weekdag: eerstvolgende die dag na de vorige training
+        let d=addDays(lastDate?pd(lastDate):T0,lastDate?1:0);while(d.getDay()!==wd)d=addDays(d,1);
+        f={iso:iso(d),m:""};res.warnings.push(`Lijn ${i+1}: geen datum bij “${join.slice(0,30)}” – ingepland op ${dayName(d).toLowerCase()} ${fd(d)}.`)}
+      if(!f){if(/\d/.test(join)&&kindFromText(join))res.errors.push(`Lijn ${i+1}: geen datum gevonden in “${join.slice(0,60)}”.`);return}
+      if(f.iso&&wd!=null&&pd(f.iso).getDay()!==wd&&f.m){const d=pd(f.iso);res.warnings.push(`Lijn ${i+1}: je schreef ${Object.keys(WD_IDX).find(k=>WD_IDX[k]===wd&&k.length>3)} ${f.m}, maar ${fd(d)} ${d.getFullYear()} is een ${dayName(d).toLowerCase()}. De datum ${fd(d)} wordt gebruikt – pas aan als dat niet klopt.`)}
       date=f.iso;let rest=join.replace(f.m,"").trim().replace(/^[·;:\-–|,\s]+/,"").replace(WEEKDAY,"").replace(/^[·;:\-–|,\s]+/,"");
       rest=rest.replace(WEEKDAY,"").trim();
       const parts=rest.split(/\s*(?:·|\||;|\s[-–]\s|\t)\s*/).map(x=>x.trim()).filter(Boolean);
@@ -327,18 +346,26 @@ function parseRows(rows){
       let pi=0;if(parts.length>1&&IMP_KIND[parts[0].toLowerCase()])pi=1;
       title=parts[pi]||"";detail=parts.slice(pi+1).filter(x=>!/^\d+(?:[.,]\d+)?\s*km$/i.test(x)).join(" · ");
       if(!/[×x]\s*\d+(?:[.,]\d+)?\s*km$/i.test(title))title=title.replace(/\s*\d+(?:[.,]\d+)?\s*km$/i,"").trim();
+      title=title.replace(/\s+(op|on|at|om)$/i,"");if(IMP_KIND[title.toLowerCase()])title="";
+      if(title)title=title[0].toUpperCase()+title.slice(1);
     }
     if(!date){res.errors.push(`Lijn ${i+1}: onbekende datum in “${join.slice(0,60)}”.`);return}
     if(!kind){if(title||detail)res.errors.push(`Lijn ${i+1}: soort training niet herkend in “${join.slice(0,60)}”. Gebruik upper, lower, run, rust, race of event.`);return}
+    if(structured){const wd=weekdayAtStart(map?row[map.date]||"":row[0]);if(wd!=null&&pd(date).getDay()!==wd){const d=pd(date);res.warnings.push(`Lijn ${i+1}: weekdag en datum komen niet overeen – ${fd(d)} ${d.getFullYear()} is een ${dayName(d).toLowerCase()}. De datum wordt gebruikt.`)}}
+    lastDate=date;
     res.items.push({date,kind,title:(title||KIND[kind].l).slice(0,60),detail:detail.slice(0,300),km:km==null?null:km})});
   res.items.sort((a,b)=>a.date.localeCompare(b.date));
   if(!res.goal){const r=res.items.filter(x=>x.kind==="race").pop();if(r)res.goal={title:r.title,date:r.date,note:"Geïmporteerd plan"}}
   return res}
 function textToRows(text){text=String(text).replace(/^\uFEFF/,"");const lines=text.split(/\r?\n/);
   const sample=lines.find(l=>l.includes(";"))?";":lines.find(l=>l.includes("\t"))?"\t":null;
-  return lines.map(l=>{if(sample)return csvSplit(l,sample);
-    if(/^\s*\d{4}-\d{1,2}-\d{1,2}\s*,/.test(l)||/^\s*(doel|datum|date)\s*,/i.test(l))return csvSplit(l,",");
-    return [l]})}
+  const rows=[];
+  lines.forEach((l,li)=>{let r;
+    if(sample)r=[csvSplit(l,sample)];
+    else if(/^\s*\d{4}-\d{1,2}-\d{1,2}\s*,/.test(l)||/^\s*(doel|datum|date)\s*,/i.test(l))r=[csvSplit(l,",")];
+    else r=splitEntries(l).map(x=>[x]);
+    r.forEach(x=>{x.line=li+1;rows.push(x)})});
+  return rows}
 function parsePlan(text){return parseRows(textToRows(text))}
 // --- bibliotheken voor Excel, Word en PDF (pas geladen als je ze nodig hebt) ---
 const J="https://cdn.jsdelivr.net/npm/",U="https://unpkg.com/";
@@ -387,6 +414,7 @@ function renderImport(){const box=$("impPreview");if(!imp){box.innerHTML="";retu
       ${exists?`<p class="status warn" style="margin:8px 0">Dit doel bestaat al. Bij importeren wordt de oude planning ervan vervangen door deze.</p>`:""}
       <div class="imp-list">${it.slice(0,60).map(x=>`<div class="imp-row"><span class="kindtag" style="background:${KIND[x.kind].c}">${KIND[x.kind].l.toUpperCase()}</span><b>${dayName(pd(x.date)).slice(0,2)} ${fd(pd(x.date))}</b><span>${esc(x.title)}${x.km?` · ${nfmt(x.km)} km`:""}</span></div>`).join("")}${it.length>60?`<p class="note-s">… en nog ${it.length-60} sessies</p>`:""}</div></div>`
     :`<p class="status warn">Geen sessies gevonden in dit bestand.</p>`)+
+    (imp.warnings&&imp.warnings.length?`<div class="imp-warn"><b>Controleer even:</b>${imp.warnings.slice(0,10).map(e=>`<div>${esc(e)}</div>`).join("")}</div>`:"")+
     (imp.errors.length?`<div class="imp-err"><b>${imp.errors.length} lijn${imp.errors.length>1?"en":""} overgeslagen:</b>${imp.errors.slice(0,8).map(e=>`<div>${esc(e)}</div>`).join("")}</div>`:"");
   $("impGo").disabled=!it.length;$("impGo").textContent=it.length?`Importeer ${it.length} sessies`:"Importeren"}
 $("impGo").addEventListener("click",async()=>{if(!imp||!imp.items.length)return;
