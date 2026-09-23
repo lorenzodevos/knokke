@@ -29,10 +29,18 @@ function nfmt(n,dec=1){n=Number(n)||0;const k=Math.pow(10,dec);return (Math.roun
 function num(v){if(v===""||v==null)return null;const n=Number(String(v).replace(",","."));return isNaN(n)?null:n}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return"net nu";if(m<60)return m+" min geleden";const h=Math.round(m/60);if(h<24)return h+" u geleden";return fd(new Date(ts))}
-function imgSrc(id){const e=EX[id];return e?`https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@${OEF_IMG_COMMIT}/exercises/${e.src}/0.jpg`:""}
-function imgAlt(id){const e=EX[id];return e?`https://raw.githubusercontent.com/yuhonas/free-exercise-db/${OEF_IMG_COMMIT}/exercises/${e.src}/0.jpg`:""}
+function imgSrc(id,f=0){const e=EX[id];return e?`https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@${OEF_IMG_COMMIT}/exercises/${e.src}/${f}.jpg`:""}
+function imgAlt(id,f=0){const e=EX[id];return e?`https://raw.githubusercontent.com/yuhonas/free-exercise-db/${OEF_IMG_COMMIT}/exercises/${e.src}/${f}.jpg`:""}
 // Valt de CDN weg, dan de foto rechtstreeks van GitHub laden
-document.addEventListener("error",e=>{const im=e.target;if(im.tagName!=="IMG"||!im.dataset.ex||im.dataset.fb)return;im.dataset.fb="1";im.src=imgAlt(im.dataset.ex)},true);
+document.addEventListener("error",e=>{const im=e.target;if(im.tagName!=="IMG"||!im.dataset.ex||im.dataset.fb)return;im.dataset.fb="1";im.src=imgAlt(im.dataset.ex,+(im.dataset.fr||0))},true);
+// Bewegende oefening: start- en eindpositie wisselen elkaar af (zoals een gif)
+function exAnim(id,cls=""){const m=EX[id]||{n:id};return `<span class="anim ${cls}" data-info="${id}" role="img" aria-label="${esc(m.n)}: uitvoering"><img src="${imgSrc(id,0)}" data-ex="${id}" data-fr="0" alt="" loading="lazy"><img class="f1" src="${imgSrc(id,1)}" data-ex="${id}" data-fr="1" alt="" loading="lazy"></span>`}
+function openExInfo(id){const m=EX[id];if(!m)return;
+  $("xTitle").textContent=m.n;$("xSub").textContent=m.g+" · "+(m.seg==="core"?"Core":KIND[m.seg].l);
+  $("xAnim").innerHTML=exAnim(id,"big");
+  $("xSteps").innerHTML=(m.i||[]).map(t=>`<li>${esc(t)}</li>`).join("");
+  $("xVideo").href="https://www.youtube.com/results?search_query="+encodeURIComponent(m.n+" exercise proper form");
+  openSheet("xSheet")}
 const T0=todayD(),TODAY=iso(T0);
 
 // ================= VASTE PLANNING: KNOKKE =================
@@ -513,7 +521,7 @@ function renderStrength(body){
   d.ex.forEach((e,ei)=>{
     const meta=EX[e.id]||{n:e.id,g:""};const last=lastFor(e.id,who,ed.date,ed.id);
     const card=document.createElement("div");card.className="exc";
-    card.innerHTML=`<div class="top"><img src="${imgSrc(e.id)}" data-ex="${e.id}" alt="${esc(meta.n)}" loading="lazy"><div class="nm"><b>${esc(meta.n)}</b><span>${esc(meta.g)}</span></div><button class="rm" data-rmex="${ei}" aria-label="${esc(meta.n)} verwijderen">Verwijder</button></div>
+    card.innerHTML=`<div class="top">${exAnim(e.id,"sm")}<div class="nm"><b>${esc(meta.n)}</b><span>${esc(meta.g)}</span></div><button class="rm" data-rmex="${ei}" aria-label="${esc(meta.n)} verwijderen">Verwijder</button></div>
       <div class="last">${last?`<em>Vorige keer (${fd(pd(last.w.date))}):</em> ${esc(setsTxt(last.e.sets))}`:`<em>Eerste keer deze oefening.</em>`}</div>
       <div class="sets"><label class="setcount">Aantal sets<select data-setcount="${ei}" aria-label="Aantal sets ${esc(meta.n)}">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option ${n===e.sets.length?"selected":""}>${n}</option>`).join("")}</select></label>
       <div class="sr h"><span>Set</span><span>Reps</span><span>Kg</span><span></span></div>
@@ -527,7 +535,7 @@ function renderStrength(body){
     while(s.length<n){const l=s[s.length-1]||{r:null,kg:null};s.push({r:l.r,kg:l.kg})}s.length=n;renderEditor()}));
   body.querySelectorAll("[data-rmset]").forEach(b=>b.addEventListener("click",()=>{const [a,c]=b.dataset.rmset.split(":").map(Number);d.ex[a].sets.splice(c,1);renderEditor()}));
   body.querySelectorAll("[data-rmex]").forEach(b=>b.addEventListener("click",()=>{d.ex.splice(+b.dataset.rmex,1);renderEditor()}));
-  body.querySelectorAll(".exc img").forEach(im=>im.addEventListener("click",()=>lightbox(im.src)));
+  body.querySelectorAll(".exc [data-info]").forEach(el=>el.addEventListener("click",()=>openExInfo(el.dataset.info)));
 }
 // ---------- picker ----------
 let pickGroup=null;
@@ -538,10 +546,11 @@ function renderPicker(){
   const q=$("pSearch").value.trim().toLowerCase();const segs=[ed.kind,"core"];
   const list=OEFENINGEN.filter(e=>segs.includes(e.seg)&&(q?(e.n.toLowerCase().includes(q)||e.g.toLowerCase().includes(q)):e.g===pickGroup));
   const sel=new Set(ed.data.ex.map(e=>e.id));
-  $("pGrid").innerHTML=list.length?list.map(e=>`<button class="pc ${sel.has(e.id)?"on":""}" data-pick="${e.id}" aria-pressed="${sel.has(e.id)}"><img src="${imgSrc(e.id)}" data-ex="${e.id}" alt="" loading="lazy"><span>${esc(e.n)}</span>${q?`<small>${esc(e.g)}</small>`:""}</button>`).join(""):`<p class="dayempty">Geen oefeningen gevonden.</p>`;
+  $("pGrid").innerHTML=list.length?list.map(e=>`<div class="pcw"><button class="pc ${sel.has(e.id)?"on":""}" data-pick="${e.id}" aria-pressed="${sel.has(e.id)}">${exAnim(e.id)}<span>${esc(e.n)}</span>${q?`<small>${esc(e.g)}</small>`:""}</button><button type="button" class="pinfo" data-pinfo="${e.id}" aria-label="Uitvoering ${esc(e.n)} bekijken">Uitleg</button></div>`).join(""):`<p class="dayempty">Geen oefeningen gevonden.</p>`;
   $("pGrid").querySelectorAll("[data-pick]").forEach(b=>b.addEventListener("click",()=>{const id=b.dataset.pick;const i=ed.data.ex.findIndex(e=>e.id===id);
     if(i>=0)ed.data.ex.splice(i,1);else{const last=lastFor(id,who,ed.date,ed.id);ed.data.ex.push({id,sets:last?last.e.sets.map(s=>({r:s.r,kg:s.kg})):[{r:null,kg:null},{r:null,kg:null},{r:null,kg:null}]})}
     renderPicker()}));
+  $("pGrid").querySelectorAll("[data-pinfo]").forEach(b=>b.addEventListener("click",e=>{e.stopPropagation();openExInfo(b.dataset.pinfo)}));
   $("pDone").textContent=`Klaar (${ed.data.ex.length} gekozen)`;
 }
 $("pSearch").addEventListener("input",renderPicker);
@@ -647,8 +656,8 @@ function openView(id){const w=byId[id];if(!w)return;viewId=id;const d=pd(w.date)
     if(x.tspeed)kv.push(["km/u tempo",nfmt(x.tspeed)]);if(x.tincline)kv.push(["% helling tempo",nfmt(x.tincline)]);
     kv.unshift(["waar",isTM(x)?"Loopband":"Buiten"]);
     b.innerHTML=`<div class="kv">${kv.map(([l,v])=>`<div><b>${esc(v)}</b>${l}</div>`).join("")}</div>`+(x.rt==="interval"?(x.blocks||[]).map((bl,i)=>`<div class="ivl"><b>Blok ${i+1}:</b> ${bl.reps||"?"} × ${bl.mode==="time"?(bl.time||"?")+" min":(bl.dist||"?")+" m"}${bl.pace?" · "+esc(bl.pace)+"/km":""}${bl.speed?" · "+nfmt(bl.speed)+" km/u":""}${bl.incline?" · "+nfmt(bl.incline)+"% helling":""}${bl.zone?" · "+bl.zone:""}${bl.hr?" · "+bl.hr+" bpm":""}${bl.rest!=null?" · rust "+nfmt(bl.rest)+" min":""}</div>`).join(""):"")}
-  else{b.innerHTML=(x.ex||[]).map(e=>{const m=EX[e.id]||{n:e.id,g:""};return `<div class="vex"><img src="${imgSrc(e.id)}" data-ex="${e.id}" alt="${esc(m.n)}" loading="lazy"><div><b>${esc(m.n)}</b><div class="ss">${esc(m.g)}</div><div>${(e.sets||[]).length?esc(setsTxt(e.sets)):"Geen sets ingevuld"}</div></div></div>`}).join("")||`<p class="dayempty">Geen oefeningen ingevuld.</p>`+(x.min?`<p class="note-s">${x.min} minuten</p>`:"");
-    b.querySelectorAll("img").forEach(im=>im.addEventListener("click",()=>lightbox(im.src)))}
+  else{b.innerHTML=(x.ex||[]).map(e=>{const m=EX[e.id]||{n:e.id,g:""};return `<div class="vex">${exAnim(e.id,"md")}<div><b>${esc(m.n)}</b><div class="ss">${esc(m.g)}</div><div>${(e.sets||[]).length?esc(setsTxt(e.sets)):"Geen sets ingevuld"}</div></div></div>`}).join("")||`<p class="dayempty">Geen oefeningen ingevuld.</p>`+(x.min?`<p class="note-s">${x.min} minuten</p>`:"");
+    b.querySelectorAll("[data-info]").forEach(el=>el.addEventListener("click",()=>openExInfo(el.dataset.info)))}
   $("vNote").innerHTML=w.note?`<div class="vnote">${esc(w.note)}</div>`:"";
   const ph=$("vPhotos");ph.innerHTML="";(w.photos||[]).forEach(f=>ph.appendChild(photoTile(null,f)));$("vPhotoBlock").style.display=(w.photos||[]).length?"block":"none";
   renderThread($("vThread"),id);if(unread().some(c=>c.logId===id)){markSeen();render()}
@@ -706,12 +715,12 @@ function ask(text,o={}){return new Promise(res=>{
 function openSheet(id){$(id).classList.add("open")}
 function closeSheet(id){$(id).classList.remove("open");if(id==="vSheet")viewId=null}
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>closeSheet(b.dataset.close)));
-["wSheet","vSheet","gSheet","plSheet","impSheet"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id))closeSheet(id)}));
+["wSheet","vSheet","gSheet","plSheet","impSheet","xSheet"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id))closeSheet(id)}));
 $("pSheet").addEventListener("click",e=>{if(e.target===$("pSheet"))closePicker()});
 document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;
   if($("lightbox").classList.contains("open")){$("lightbox").classList.remove("open");return}
   if($("pSheet").classList.contains("open")){closePicker();return}
-  for(const id of ["impSheet","gSheet","plSheet","wSheet","vSheet"])if($(id).classList.contains("open")){closeSheet(id);return}});
+  for(const id of ["xSheet","impSheet","gSheet","plSheet","wSheet","vSheet"])if($(id).classList.contains("open")){closeSheet(id);return}});
 
 // ================= SERVER =================
 let stTimer=null,busy=0;
