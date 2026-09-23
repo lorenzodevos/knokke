@@ -174,7 +174,7 @@ function renderWeek(){
   days.querySelectorAll("[data-add]").forEach(b=>b.addEventListener("click",()=>openEditor({date:b.dataset.add})));
   days.querySelectorAll("[data-fromplan]").forEach(b=>b.addEventListener("click",()=>{const it=findPlan(b.dataset.fromplan);if(it)openEditor({date:it.date,kind:it.kind==="race"?"run":it.kind,rt:it.rt,planKm:it.km})}));
   days.querySelectorAll("[data-wo]").forEach(b=>b.addEventListener("click",()=>{const w=byId[b.dataset.wo];if(!w)return;if(w.person===who)openEditor({id:w.id});else openView(w.id)}));
-  days.querySelectorAll("[data-delplan]").forEach(b=>b.addEventListener("click",async()=>{if(!confirm("Deze geplande sessie van de kalender halen?"))return;await run("deletePlanItems",[[b.dataset.delplan]],"Verwijderd.")}));
+  days.querySelectorAll("[data-delplan]").forEach(b=>b.addEventListener("click",async()=>{if(!(await ask("Deze geplande sessie van de kalender halen?",{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;await run("deletePlanItems",[[b.dataset.delplan]],"Verwijderd.")}));
 }
 function findPlan(id){const it=P.find(p=>p.id===id);if(it)return it;const m=id.match(/^k(\d{4}-\d{2}-\d{2})/);if(m)return knokkeDay(m[1]).find(p=>p.id===id);return null}
 $("prev").addEventListener("click",()=>{selDate=iso(addDays(pd(selDate),-7));syncMonth();render()});
@@ -197,7 +197,7 @@ $("btnNewGoal").addEventListener("click",()=>openGoal(null));
 $("gForm").addEventListener("submit",async e=>{e.preventDefault();const g={id:goalEdit,title:$("gName").value.trim(),date:$("gDate").value,note:$("gNote").value.trim(),createdBy:who||""};
   if(!g.title||!g.date)return;closeSheet("gSheet");await run("saveGoal",[g],"Doel opgeslagen.")});
 $("gDel").addEventListener("click",async()=>{if(!goalEdit)return;const n=P.filter(p=>p.goalId===goalEdit).length;
-  if(!confirm(`Dit doel wissen?${n?` De ${n} geplande sessies ervan verdwijnen ook van de kalender.`:""}`))return;closeSheet("gSheet");await run("deleteGoal",[goalEdit],"Doel gewist.")});
+  if(!(await ask(`Dit doel wissen?${n?` De ${n} geplande sessies ervan verdwijnen ook van de kalender.`:""}`,{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;closeSheet("gSheet");await run("deleteGoal",[goalEdit],"Doel gewist.")});
 
 // ================= PLANNING =================
 let planMode="one";
@@ -224,16 +224,16 @@ function weekItems(){const from=$("plFrom").value,to=$("plTo").value;if(!from||!
 function planCount(){if(planMode!=="week")return;const n=weekItems().length;$("plCount").textContent=n?`Dit zet ${n} sessies op de kalender.`:"Kies minstens één dag en een geldige periode."}
 $("btnNewPlan").addEventListener("click",()=>{if(!pin)return;openPlan()});
 $("plSave").addEventListener("click",async()=>{const goalId=$("plGoal").value;let items;
-  if(planMode==="one"){if(!$("plDate").value){alert("Kies een datum.");return}const k=$("plKind").value;
+  if(planMode==="one"){if(!$("plDate").value){ask("Kies eerst een datum.",{alert:true});return}const k=$("plKind").value;
     items=[{date:$("plDate").value,kind:k,title:$("plTitleIn").value.trim()||PK.find(p=>p[0]===k)[1],detail:$("plDetail").value.trim(),km:num($("plKm").value)}]}
-  else{items=weekItems();if(!items.length){alert("Kies minstens één dag en een geldige periode.");return}if(items.length>500){alert("Maximaal 500 sessies per keer.");return}}
+  else{items=weekItems();if(!items.length){ask("Kies minstens één dag en een geldige periode.",{alert:true});return}if(items.length>500){ask("Maximaal 500 sessies per keer.",{alert:true});return}}
   items.forEach(i=>i.goalId=goalId);closeSheet("plSheet");await run("addPlanItems",[items],`${items.length} sessie${items.length>1?"s":""} gepland.`);
   selDate=items[0].date;syncMonth();render()});
 
 // ================= WORKOUT EDITOR =================
 let ed=null; // {id,date,kind,data,feel,note,staged:[]}
 function openEditor(o){
-  if(!who){alert("Tik eerst bovenaan op je naam.");return}
+  if(!who){ask("Tik eerst bovenaan op je naam, zodat de app weet wie er traint.",{alert:true,title:"Wie ben jij?"});return}
   const w=o.id?byId[o.id]:null;
   ed={id:w?w.id:null,date:w?w.date:o.date,kind:w?w.kind:(o.kind||null),data:w?JSON.parse(JSON.stringify(w.data||{})):{},feel:w?w.feel:null,note:w?w.note:"",staged:[],tplId:null,tplMode:"none",tplName:""};
   if(w&&w.data&&w.data.tplId&&TP.some(t=>t.id===w.data.tplId&&t.person===who)){ed.tplId=w.data.tplId;ed.tplMode="keep"}
@@ -251,10 +251,10 @@ function openEditor(o){
   renderEditor();openSheet("wSheet");
 }
 function newBlock(){return{reps:6,mode:"dist",dist:800,time:null,pace:"",zone:"Z4",hr:null,rest:1.5}}
-document.querySelectorAll(".types button").forEach(b=>b.addEventListener("click",()=>{
+document.querySelectorAll(".types button").forEach(b=>b.addEventListener("click",async()=>{
   const k=b.dataset.kind;if(ed.kind===k)return;
   const hasData=(ed.data.ex&&ed.data.ex.length)||(ed.data.rt&&runKm(ed.data));
-  if(hasData&&!confirm("Van soort wisselen? Wat je al invulde voor deze training gaat verloren."))return;
+  if(hasData&&!(await ask("Wat je al invulde voor deze training gaat verloren.",{title:"Van soort wisselen?"})))return;
   ed.kind=k;ed.data=k==="run"?{rt:"z2"}:{ex:[]};ed.tplId=null;ed.tplMode="none";ed.tplName="";renderEditor()}));
 function renderEditor(){
   document.querySelectorAll(".types button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.kind===ed.kind)));
@@ -276,11 +276,11 @@ function renderTplBar(body){
   const cur=ed.tplId||ed.tplFrom||"";
   bar.innerHTML=`<label>Opgeslagen workout laden<select id="tplSel"><option value="">— Kies een workout —</option>${mine.length?`<optgroup label="Mijn workouts">${mine.map(t=>`<option value="${esc(t.id)}" ${t.id===cur?"selected":""}>${esc(t.name)}</option>`).join("")}</optgroup>`:""}${other.length?`<optgroup label="Van ${NAMES[oth]}">${other.map(t=>`<option value="${esc(t.id)}" ${t.id===cur?"selected":""}>${esc(t.name)}</option>`).join("")}</optgroup>`:""}</select></label>${ed.tplId?`<button class="rm" id="tplDel" type="button">Verwijder “${esc((TP.find(t=>t.id===ed.tplId)||{}).name||"")}”</button>`:""}`;
   body.appendChild(bar);
-  $("tplSel").addEventListener("change",e=>{const id=e.target.value;if(!id){ed.tplId=null;ed.tplFrom=null;ed.tplMode="none";renderEditor();return}
+  $("tplSel").addEventListener("change",async e=>{const id=e.target.value;if(!id){ed.tplId=null;ed.tplFrom=null;ed.tplMode="none";renderEditor();return}
     const t=TP.find(x=>x.id===id);if(!t)return;
-    if(hasInput()&&!confirm(`“${t.name}” laden? Wat je nu hebt ingevuld wordt vervangen.`)){e.target.value=cur;return}
+    if(hasInput()&&!(await ask("Wat je nu hebt ingevuld wordt vervangen.",{title:`“${t.name}” laden?`,ok:"Ja, laden"}))){e.target.value=cur;return}
     loadTpl(t);renderEditor()});
-  const del=$("tplDel");if(del)del.addEventListener("click",async()=>{const t=TP.find(x=>x.id===ed.tplId);if(!t||!confirm(`Opgeslagen workout “${t.name}” verwijderen? Je gelogde trainingen blijven bewaard.`))return;
+  const del=$("tplDel");if(del)del.addEventListener("click",async()=>{const t=TP.find(x=>x.id===ed.tplId);if(!t||!(await ask(`Opgeslagen workout “${t.name}” verwijderen? Je gelogde trainingen blijven bewaard.`,{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;
     const id=t.id;ed.tplId=null;ed.tplMode="none";await run("deleteTemplate",[id,who],"Workout verwijderd.");renderEditor()});
 }
 function loadTpl(t){
@@ -392,7 +392,7 @@ function syncFeel(){document.querySelectorAll("#feel button").forEach(b=>b.setAt
 document.querySelectorAll("#feel button").forEach(b=>b.addEventListener("click",()=>{ed.feel=ed.feel===+b.dataset.f?null:+b.dataset.f;syncFeel()}));
 function renderEditPhotos(){const box=$("editPhotos");if(!box||!ed)return;box.innerHTML="";
   const w=ed.id?byId[ed.id]:null;const existing=w?w.photos||[]:[];
-  existing.forEach(fid=>box.appendChild(photoTile(null,fid,async()=>{if(!confirm("Deze foto verwijderen?"))return;await run("removePhoto",[ed.id,who,fid],"Foto verwijderd.");renderEditPhotos()})));
+  existing.forEach(fid=>box.appendChild(photoTile(null,fid,async()=>{if(!(await ask("Deze foto verwijderen?",{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;await run("removePhoto",[ed.id,who,fid],"Foto verwijderd.");renderEditPhotos()})));
   ed.staged.forEach((u,k)=>box.appendChild(photoTile(u,null,()=>{ed.staged.splice(k,1);renderEditPhotos()})));
   if(existing.length+ed.staged.length<MAXPH){const lab=document.createElement("label");lab.className="addph";lab.innerHTML=`<span>+ Foto</span><input type="file" accept="image/*" multiple>`;
     lab.querySelector("input").addEventListener("change",async e=>{const files=[...e.target.files].slice(0,MAXPH-existing.length-ed.staged.length);
@@ -403,12 +403,12 @@ $("btnSave").addEventListener("click",async()=>{
   const d=ed.data;
   if(ed.kind==="run"){d.km=Math.round(runKm(d)*100)/100}
   else{d.ex=(d.ex||[]).map(e=>({id:e.id,sets:(e.sets||[]).filter(s=>s.r!=null||s.kg!=null)})).filter(e=>e.sets.length||true)}
-  if(ed.kind!=="run"&&!d.ex.length&&!confirm("Je hebt nog geen oefeningen gekozen. Toch opslaan?"))return;
+  if(ed.kind!=="run"&&!d.ex.length&&!(await ask("Je hebt nog geen oefeningen gekozen.",{title:"Toch opslaan?",ok:"Ja, opslaan"})))return;
   // opgeslagen workout (sjabloon)
   let tpl=null;
-  if(ed.tplMode==="new"){const name=(ed.tplName||"").trim();if(!name){alert("Geef je workout een naam, of vink 'Bewaar als workout' uit.");const n=$("tplName");if(n)n.focus();return}
+  if(ed.tplMode==="new"){const name=(ed.tplName||"").trim();if(!name){await ask("Geef je workout een naam, of vink 'Bewaar als workout' uit.",{alert:true,title:"Naam ontbreekt"});const n=$("tplName");if(n)n.focus();return}
     const same=myTpls(ed.kind).find(t=>t.name.toLowerCase()===name.toLowerCase());
-    if(same&&!confirm(`Je hebt al een workout “${same.name}”. Overschrijven met deze sessie?`))return;
+    if(same&&!(await ask(`Je hebt al een workout “${same.name}”. Overschrijven met deze sessie?`,{title:"Overschrijven?",ok:"Ja, overschrijf"})))return;
     tpl={id:same?same.id:null,name:same?same.name:name}}
   else if(ed.tplMode==="update"&&ed.tplId){const t=TP.find(x=>x.id===ed.tplId);if(t)tpl={id:t.id,name:t.name}}
   else if(ed.tplMode==="keep"&&ed.tplId){const t=TP.find(x=>x.id===ed.tplId);if(t){d.tplId=t.id;d.tplName=t.name}}
@@ -425,7 +425,7 @@ $("btnSave").addEventListener("click",async()=>{
     busy--;apply(res);setStatus(tpl?(tpl.id?`Opgeslagen · “${tpl.name}” is bijgewerkt.`:`Opgeslagen · workout “${tpl.name}” bewaard.`):"Opgeslagen.")}
   catch(e){busy--;setStatus(errText(e),true);refresh()}
 });
-$("btnDel").addEventListener("click",async()=>{if(!ed||!ed.id)return;if(!confirm("Deze training wissen? Foto's en reacties verdwijnen ook."))return;const id=ed.id;closeSheet("wSheet");await run("deleteWorkout",[id,who],"Gewist.")});
+$("btnDel").addEventListener("click",async()=>{if(!ed||!ed.id)return;if(!(await ask("Deze training wissen? Foto's en reacties verdwijnen ook.",{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;const id=ed.id;closeSheet("wSheet");await run("deleteWorkout",[id,who],"Gewist.")});
 
 // ================= VIEW (andermans training) =================
 let viewId=null;
@@ -481,6 +481,16 @@ function renderFeed(){const un=unread();const nb=$("newc");
     return `<li data-open="${esc(c.logId)}" class="${un.includes(c)?"unread":""}" style="cursor:pointer"><span class="dot" style="background:var(--${c.author})"></span><div><b>${NAMES[c.author]}</b> reageerde op ${whose} ${esc(t?woTitle(t):"training")}: “${esc(c.text)}”<div class="when">${ago(c.createdAt)}</div></div></li>`}).join("");
   feed.querySelectorAll("[data-open]").forEach(li=>li.addEventListener("click",()=>{const w=byId[li.dataset.open];if(!w)return;if(w.person===who)openEditor({id:w.id});else openView(w.id)}))}
 $("newc").addEventListener("click",()=>{const un=unread();markSeen();render();if(un.length){const w=byId[un[un.length-1].logId];if(w){if(w.person===who)openEditor({id:w.id});else openView(w.id)}}});
+
+// ================= EIGEN BEVESTIGINGSVENSTER =================
+function ask(text,o={}){return new Promise(res=>{
+  const bg=$("askBg");$("askTitle").textContent=o.title||(o.alert?"Let op":"Ben je zeker?");$("askText").textContent=text;
+  const ok=$("askOk"),no=$("askNo");ok.textContent=o.ok||(o.alert?"OK":"Ja");no.textContent=o.cancel||"Nee";
+  no.hidden=!!o.alert;ok.classList.toggle("danger",!!o.danger);
+  const done=v=>{bg.classList.remove("open");ok.onclick=no.onclick=null;bg.onclick=null;document.removeEventListener("keydown",key,true);res(v)};
+  const key=e=>{if(e.key==="Escape"){e.stopPropagation();done(false)}};
+  ok.onclick=()=>done(true);no.onclick=()=>done(false);bg.onclick=e=>{if(e.target===bg)done(false)};
+  document.addEventListener("keydown",key,true);bg.classList.add("open");setTimeout(()=>(o.alert?ok:no).focus(),30)})}
 
 // ================= SHEETS =================
 function openSheet(id){$(id).classList.add("open")}
