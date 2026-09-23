@@ -84,6 +84,7 @@
     <div class="goal-actions">
       <button class="primary" id="btnNewGoal">+ Nieuw doel</button>
       <button class="textbtn" id="btnNewPlan" style="height:auto;padding:11px 16px">+ Planning toevoegen</button>
+      <button class="textbtn" id="btnImport" style="height:auto;padding:11px 16px">Plan importeren</button>
     </div>
   </section>
 
@@ -184,6 +185,21 @@
       <p class="note-s" id="plCount"></p>
     </div>
     <div class="actions"><button class="btn-sec" data-close="plSheet">Annuleren</button><button class="btn-save" id="plSave">Op kalender zetten</button></div>
+  </div>
+</div>
+
+<!-- Plan importeren -->
+<div class="sheet-bg" id="impSheet" role="dialog" aria-modal="true" aria-labelledby="impTitle">
+  <div class="sheet big">
+    <div class="head"><div><h3 id="impTitle">Plan importeren</h3><p class="sub">Zet een volledig trainingsplan in één keer op de kalender: alle trainingen op de juiste dagen, plus de racedag als event.</p></div><button class="x" data-close="impSheet" aria-label="Sluiten">×</button></div>
+    <label>Plan plakken<textarea id="impText" rows="5" placeholder="Plak hier het plan dat je kreeg, bv.&#10;Doel: Brugge Stadsloop 10 km – 01/10/2026&#10;do 24/09 · Run · Interval 5× 1 km · 8 km&#10;vr 25/09 · Upper · Borst, rug, schouders"></textarea></label>
+    <button type="button" class="primary" id="impParse" style="width:100%">Plan lezen</button>
+    <div class="or"><span>of</span></div>
+    <label class="filepick"><input type="file" id="impFile" accept=".csv,.txt,.tsv,.xlsx,.xls,.ods,.docx,.pdf,text/csv,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"><span>Bestand kiezen<small id="impFileName">Tik hier om een bestand te kiezen</small></span></label>
+    <p class="note-s" style="text-align:center;margin:4px 0 0">Excel (.xlsx), Word (.docx), PDF, CSV of tekst</p>
+    <button type="button" class="linkish" id="impSample">Voorbeeldbestand downloaden</button>
+    <div id="impPreview"></div>
+    <div class="actions" style="margin-top:14px"><button class="btn-sec" data-close="impSheet">Annuleren</button><button class="btn-save" id="impGo" disabled>Importeren</button></div>
   </div>
 </div>
 

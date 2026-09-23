@@ -443,3 +443,26 @@ button:focus-visible{outline:2px solid var(--volt);outline-offset:2px}
 .tmrow{border-top:1px dashed var(--line);padding-top:10px;margin-top:2px}
 .envsw button{font-family:var(--display);font-style:italic;font-weight:800;font-size:22px;letter-spacing:1px;text-transform:uppercase;padding:10px 8px}
 .envsw button[aria-pressed="true"]{background:var(--volt);color:var(--on-volt);box-shadow:0 0 14px rgba(212,255,0,.25)}
+/* Plan importeren */
+.filepick{display:block;border:2px dashed rgba(212,255,0,.5);border-radius:14px;padding:22px 14px;text-align:center;cursor:pointer;background:#141610;margin:4px 0 6px}
+.filepick input{display:block;margin:0 auto 8px;background:transparent;border:0;color:var(--ink);max-width:100%}
+.filepick span{font-family:var(--display);font-weight:800;font-style:italic;font-size:20px;color:var(--volt);text-transform:uppercase;letter-spacing:.5px}
+.imp-sum{margin-top:14px}
+.imp-goal{border:1px solid var(--volt);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#141610}
+.imp-goal span{display:block;font-size:11px;font-weight:800;letter-spacing:2px;color:var(--volt)}
+.imp-goal b{display:block;font-family:var(--display);font-size:24px;line-height:1.1}
+.imp-goal em{font-style:normal;color:var(--muted);font-size:14px}
+.imp-list{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-top:8px}
+.imp-row{display:grid;grid-template-columns:auto 74px 1fr;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #202023;font-size:14px}
+.imp-row:last-child{border-bottom:0}
+.imp-row b{font-family:var(--display);font-size:16px}
+.imp-row span:last-child{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-err{margin-top:10px;border:1px solid rgba(255,106,61,.5);border-radius:10px;padding:8px 10px;font-size:13px;color:#FFB59E}
+.imp-err b{display:block;color:var(--run);margin-bottom:4px}
+.filepick{position:relative}
+.filepick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0}
+.filepick small{display:block;margin-top:6px;font-size:13px;color:var(--muted);font-family:var(--body);font-style:normal;text-transform:none;letter-spacing:0;font-weight:600}
+.imp-row{grid-template-columns:auto 92px 1fr}
+.or{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+#impText{min-height:110px;font-size:14px}

@@ -179,10 +179,16 @@ function renderWeek(){
     h+=`</div>`;el.innerHTML=h;days.appendChild(el);
   }
   days.querySelectorAll("[data-add]").forEach(b=>b.addEventListener("click",()=>openEditor({date:b.dataset.add})));
-  days.querySelectorAll("[data-fromplan]").forEach(b=>b.addEventListener("click",()=>{const it=findPlan(b.dataset.fromplan);if(it)openEditor({date:it.date,kind:it.kind==="race"?"run":it.kind,rt:it.rt,planKm:it.km})}));
+  days.querySelectorAll("[data-fromplan]").forEach(b=>b.addEventListener("click",()=>{const it=findPlan(b.dataset.fromplan);if(it){const txt=(it.title||"")+" "+(it.detail||"");openEditor({date:it.date,kind:it.kind==="race"?"run":it.kind,rt:it.rt||guessRt(txt),env:/loopband|treadmill/i.test(txt)?"tm":undefined,planKm:it.km})}}));
   days.querySelectorAll("[data-wo]").forEach(b=>b.addEventListener("click",()=>{const w=byId[b.dataset.wo];if(!w)return;if(w.person===who)openEditor({id:w.id});else openView(w.id)}));
   days.querySelectorAll("[data-delplan]").forEach(b=>b.addEventListener("click",async()=>{if(!(await ask("Deze geplande sessie van de kalender halen?",{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;await run("deletePlanItems",[[b.dataset.delplan]],"Verwijderd.")}));
 }
+function guessRt(t){t=(t||"").toLowerCase();
+  if(/helling|incline|wandel/.test(t))return"walk";
+  if(/interval|\d+\s*[×x]\s*\d+|fartlek|heuvelsprint|sprints?/.test(t))return"interval";
+  if(/tempo|drempel|threshold/.test(t))return"tempo";
+  if(/long|lsd|duurloop|lange|race|wedstrijd/.test(t))return"long";
+  return"z2"}
 function findPlan(id){const it=P.find(p=>p.id===id);if(it)return it;const m=id.match(/^k(\d{4}-\d{2}-\d{2})/);if(m)return knokkeDay(m[1]).find(p=>p.id===id);return null}
 $("prev").addEventListener("click",()=>{selDate=iso(addDays(pd(selDate),-7));syncMonth();render()});
 $("next").addEventListener("click",()=>{selDate=iso(addDays(pd(selDate),7));syncMonth();render()});
@@ -237,6 +243,163 @@ $("plSave").addEventListener("click",async()=>{const goalId=$("plGoal").value;le
   items.forEach(i=>i.goalId=goalId);closeSheet("plSheet");await run("addPlanItems",[items],`${items.length} sessie${items.length>1?"s":""} gepland.`);
   selDate=items[0].date;syncMonth();render()});
 
+// ================= PLAN IMPORTEREN =================
+const IMP_KIND={upper:"upper",bovenlichaam:"upper",kracht:"upper","kracht upper":"upper",lower:"lower",benen:"lower","kracht lower":"lower",
+  run:"run",loop:"run",lopen:"run",looptraining:"run",rust:"rust",rest:"rust",race:"race",wedstrijd:"race",event:"event",evenement:"event"};
+const IMP_SAMPLE=["VOLTAGE PLAN",
+"# Voorbeeld van het formaat. Lijnen met # worden genegeerd.",
+"# doel;naam;datum;notitie",
+"doel;Voorbeeld 10 km race;2026-10-01;Testplan – na het testen mag je dit doel wissen",
+"datum;soort;titel;uitleg;km",
+"2026-09-24;run;Interval;15 min opwarmen · 5× 1 km Z4 · 2 min wandelen · 10 min cooldown;8",
+"2026-09-25;upper;Upper;Borst, rug, schouders. Licht houden.;",
+"2026-09-26;rust;Rust;;",
+"2026-09-27;run;Long run;Rustig in Z2;10",
+"2026-09-28;lower;Lower licht;Activatie, geen zware sets;",
+"2026-09-29;run;Tempo run loopband;2 km Z2 · 3 km Z3 · 1 km Z2;6",
+"2026-09-30;rust;Rust;Benen omhoog, goed eten en drinken;",
+"2026-10-01;race;Voorbeeld 10 km race;Racedag – go!;10"].join("\n");
+let imp=null;
+function csvSplit(line,delim){const out=[];let cur="",q=false;
+  for(let i=0;i<line.length;i++){const c=line[i];
+    if(q){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
+    else if(c==='"')q=true;else if(c===delim){out.push(cur);cur=""}else cur+=c}
+  out.push(cur);return out.map(x=>x.trim())}
+// --- datums herkennen ---
+const MONTHS={jan:1,januari:1,january:1,feb:2,februari:2,february:2,mrt:3,maart:3,mar:3,march:3,apr:4,april:4,mei:5,may:5,jun:6,juni:6,june:6,jul:7,juli:7,july:7,aug:8,augustus:8,august:8,sep:9,sept:9,september:9,okt:10,oktober:10,oct:10,october:10,nov:11,november:11,dec:12,december:12};
+function inferYear(m,d){const y=T0.getFullYear();const c=new Date(y,m-1,d);return (T0-c)/864e5>60?y+1:y}
+function mkIso(y,m,d){y=+y;m=+m;d=+d;if(m<1||m>12||d<1||d>31)return null;const t=new Date(y,m-1,d);if(t.getMonth()!==m-1)return null;return iso(t)}
+function findDate(t){let m;
+  if((m=t.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/)))return{iso:mkIso(m[1],m[2],m[3]),m:m[0]};
+  if((m=t.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})\b/)))return{iso:mkIso(m[3],m[2],m[1]),m:m[0]};
+  if((m=t.match(/\b(\d{1,2})\s+([a-z]{3,9})\.?(?:\s+(\d{4}))?\b/i))&&MONTHS[m[2].toLowerCase()]){const mo=MONTHS[m[2].toLowerCase()];return{iso:mkIso(m[3]||inferYear(mo,+m[1]),mo,m[1]),m:m[0]}}
+  if((m=t.match(/(?:^|[^\d])(\d{1,2})\/(\d{1,2})(?![\d\/])/)))return{iso:mkIso(inferYear(+m[2],+m[1]),m[2],m[1]),m:m[0].replace(/^[^\d]/,"")};
+  return null}
+function impDate(v){const f=findDate(String(v||"").trim());return f?f.iso:null}
+// --- soort training herkennen ---
+function kindFromText(t){t=" "+String(t||"").toLowerCase()+" ";
+  if(/\b(rust|rustdag|rest|off|herstel dag)\b/.test(t))return"rust";
+  if(/\b(race|racedag|wedstrijd)\b/.test(t))return"race";
+  if(/\b(upper|bovenlichaam|push|pull|borst|schouders|armen|biceps|triceps)\b/.test(t))return"upper";
+  if(/\b(lower|benen|legs?|squats?|lunges?|kuiten|hamstrings)\b/.test(t))return"lower";
+  if(/\b(run|runs|loop|lopen|interval|intervals|tempo|long|lsd|duurloop|zone ?2|z2|jog|joggen|fartlek|shakeout|helling|wandelen|loopband|km)\b/.test(t))return"run";
+  if(/\b(kracht|gym|strength|fitness)\b/.test(t))return"upper";
+  if(/\b(etentje|event|feest|evenement)\b/.test(t))return"event";
+  return null}
+function kindOf(v,fallback){const k=IMP_KIND[String(v||"").toLowerCase().trim()];return k||kindFromText(v)||kindFromText(fallback)}
+function kmFromText(t){const re=/(\d+(?:[.,]\d+)?)\s*km\b/gi;let m,best=null;
+  while((m=re.exec(t))){const before=t.slice(Math.max(0,m.index-3),m.index);if(/[×x]\s*$/i.test(before))continue;best=num(m[1])}
+  return best}
+const WEEKDAY=/^(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag|monday|tuesday|wednesday|thursday|friday|saturday|sunday|ma|di|wo|do|vr|za|zo|mon|tue|wed|thu|fri|sat|sun)\b\.?\s*/i;
+const HEAD={date:/^(datum|date|dag|day)$/i,kind:/^(soort|type|categorie|sport)$/i,title:/^(titel|training|workout|sessie|title|naam)$/i,detail:/^(uitleg|omschrijving|details?|beschrijving|notitie|inhoud|description)$/i,km:/^(km|afstand|distance|kilometers?)$/i};
+// --- rijen (van eender welk formaat) omzetten naar een plan ---
+function parseRows(rows){
+  const res={goal:null,items:[],errors:[]};let map=null;
+  rows.forEach((row,i)=>{
+    row=row.map(c=>String(c==null?"":c).replace(/\s+/g," ").trim());while(row.length&&!row[row.length-1])row.pop();
+    const join=row.filter(Boolean).join(" · ");if(!join)return;
+    if(/^(#|\/\/)/.test(join)||/^voltage plan$/i.test(join))return;
+    const low=row.map(c=>c.toLowerCase());
+    if(low.some(c=>HEAD.date.test(c))&&low.length>1&&low.some(c=>HEAD.kind.test(c)||HEAD.title.test(c)||HEAD.km.test(c))){
+      map={};low.forEach((c,ci)=>{for(const k in HEAD)if(HEAD[k].test(c)&&map[k]==null)map[k]=ci});return}
+    if(/^(doel|goal|event|evenement)\b/i.test(row[0])){
+      let title,date,note="";
+      if(row.length>=3&&impDate(row[2])){title=row[1];date=impDate(row[2]);note=row[3]||""}
+      else{const f=findDate(join);date=f&&f.iso;title=join.replace(/^(doel|goal|event|evenement)\s*[:;·\-–]?\s*/i,"").replace(f?f.m:"","").replace(/\s*[·;\-–|]\s*$/,"").replace(/\s*[·;\-–|]\s*[·;\-–|]\s*/g," · ").trim()}
+      if(!title||!date){res.errors.push(`Lijn ${i+1}: event heeft een naam en een datum nodig.`);return}
+      res.goal={title:title.slice(0,80),date,note:note.slice(0,500)};return}
+    let date,kind,title="",detail="",km=null;
+    const structured=row.length>=2&&(map||impDate(row[0]));
+    if(structured){
+      const col=k=>map&&map[k]!=null?row[map[k]]:null;
+      date=impDate(map?col("date"):row[0]);
+      const kc=map?col("kind"):row[1];
+      title=(map?col("title"):row[2])||"";detail=(map?col("detail"):row[3])||"";
+      const kmc=map?col("km"):row[4];km=num(kmc)!=null?num(kmc):kmFromText(kmc||"")??kmFromText(title+" "+detail);
+      kind=kindOf(kc,title+" "+detail);
+      if(!map&&!IMP_KIND[(kc||"").toLowerCase()]&&!title){title=kc||""}
+    }else{
+      const f=findDate(join);if(!f){if(/\d/.test(join)&&kindFromText(join))res.errors.push(`Lijn ${i+1}: geen datum gevonden in “${join.slice(0,60)}”.`);return}
+      date=f.iso;let rest=join.replace(f.m,"").trim().replace(/^[·;:\-–|,\s]+/,"").replace(WEEKDAY,"").replace(/^[·;:\-–|,\s]+/,"");
+      rest=rest.replace(WEEKDAY,"").trim();
+      const parts=rest.split(/\s*(?:·|\||;|\s[-–]\s|\t)\s*/).map(x=>x.trim()).filter(Boolean);
+      kind=kindFromText(rest);km=kmFromText(rest);
+      let pi=0;if(parts.length>1&&IMP_KIND[parts[0].toLowerCase()])pi=1;
+      title=parts[pi]||"";detail=parts.slice(pi+1).filter(x=>!/^\d+(?:[.,]\d+)?\s*km$/i.test(x)).join(" · ");
+      if(!/[×x]\s*\d+(?:[.,]\d+)?\s*km$/i.test(title))title=title.replace(/\s*\d+(?:[.,]\d+)?\s*km$/i,"").trim();
+    }
+    if(!date){res.errors.push(`Lijn ${i+1}: onbekende datum in “${join.slice(0,60)}”.`);return}
+    if(!kind){if(title||detail)res.errors.push(`Lijn ${i+1}: soort training niet herkend in “${join.slice(0,60)}”. Gebruik upper, lower, run, rust, race of event.`);return}
+    res.items.push({date,kind,title:(title||KIND[kind].l).slice(0,60),detail:detail.slice(0,300),km:km==null?null:km})});
+  res.items.sort((a,b)=>a.date.localeCompare(b.date));
+  if(!res.goal){const r=res.items.filter(x=>x.kind==="race").pop();if(r)res.goal={title:r.title,date:r.date,note:"Geïmporteerd plan"}}
+  return res}
+function textToRows(text){text=String(text).replace(/^\uFEFF/,"");const lines=text.split(/\r?\n/);
+  const sample=lines.find(l=>l.includes(";"))?";":lines.find(l=>l.includes("\t"))?"\t":null;
+  return lines.map(l=>{if(sample)return csvSplit(l,sample);
+    if(/^\s*\d{4}-\d{1,2}-\d{1,2}\s*,/.test(l)||/^\s*(doel|datum|date)\s*,/i.test(l))return csvSplit(l,",");
+    return [l]})}
+function parsePlan(text){return parseRows(textToRows(text))}
+// --- bibliotheken voor Excel, Word en PDF (pas geladen als je ze nodig hebt) ---
+const J="https://cdn.jsdelivr.net/npm/",U="https://unpkg.com/";
+const LIB={xlsx:"xlsx@0.18.5/dist/xlsx.full.min.js",mammoth:"mammoth@1.6.0/mammoth.browser.min.js",pdf:"pdfjs-dist@3.11.174/build/pdf.min.js",pdfWorker:"pdfjs-dist@3.11.174/build/pdf.worker.min.js"};
+const libCache={};let pdfBase=J;
+function loadOne(url){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=url;s.onload=res;s.onerror=()=>{s.remove();rej(new Error("LIB"))};document.head.appendChild(s)})}
+function loadScript(path){return libCache[path]||(libCache[path]=loadOne(J+path).then(()=>J).catch(()=>loadOne(U+path).then(()=>U)).catch(e=>{delete libCache[path];throw e}))}
+async function rowsFromXlsx(buf){await loadScript(LIB.xlsx);const wb=XLSX.read(buf,{type:"array",cellDates:true});let rows=[];
+  wb.SheetNames.forEach(n=>{rows=rows.concat(XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,dateNF:"yyyy-mm-dd",defval:""}))});return rows}
+async function rowsFromDocx(buf){await loadScript(LIB.mammoth);const r=await mammoth.convertToHtml({arrayBuffer:buf});
+  const doc=new DOMParser().parseFromString(r.value,"text/html");const rows=[];
+  doc.body.querySelectorAll("tr, p, li, h1, h2, h3, h4").forEach(el=>{if(el.closest("tr")&&el.tagName!=="TR")return;
+    if(el.tagName==="TR")rows.push([...el.children].map(td=>td.textContent));else rows.push(...el.textContent.split(/\n/).map(x=>[x]))});
+  return rows}
+async function rowsFromPdf(buf){const base=await loadScript(LIB.pdf);pdfjsLib.GlobalWorkerOptions.workerSrc=base+LIB.pdfWorker;
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;const rows=[];
+  for(let p=1;p<=pdf.numPages;p++){const tc=await (await pdf.getPage(p)).getTextContent();
+    const lines=[];tc.items.forEach(it=>{if(!it.str.trim())return;const y=it.transform[5],x=it.transform[4];
+      let ln=lines.find(l=>Math.abs(l.y-y)<3);if(!ln){ln={y,items:[]};lines.push(ln)}ln.items.push({x,w:it.width,s:it.str})});
+    lines.sort((a,b)=>b.y-a.y).forEach(l=>{l.items.sort((a,b)=>a.x-b.x);const cells=[];let prevEnd=null;
+      l.items.forEach(it=>{if(prevEnd===null||it.x-prevEnd>12)cells.push(it.s);else cells[cells.length-1]+=(it.x-prevEnd>1?" ":"")+it.s;prevEnd=it.x+it.w});
+      rows.push(cells)})}
+  return rows}
+function openImport(){imp=null;$("impText").value="";$("impFile").value="";$("impFileName").textContent="Tik hier om een bestand te kiezen";$("impPreview").innerHTML="";$("impGo").disabled=true;openSheet("impSheet")}
+$("btnImport").addEventListener("click",()=>{if(!pin)return;openImport()});
+$("impFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;$("impFileName").textContent=f.name;
+  const box=$("impPreview");box.innerHTML=`<p class="note-s">Bestand lezen…</p>`;$("impGo").disabled=true;
+  try{const ext=(f.name.split(".").pop()||"").toLowerCase();let rows;
+    if(["csv","txt","tsv","text"].includes(ext)||f.type.startsWith("text/"))rows=textToRows(await f.text());
+    else if(["xlsx","xls","xlsm","ods"].includes(ext))rows=await rowsFromXlsx(await f.arrayBuffer());
+    else if(ext==="docx")rows=await rowsFromDocx(await f.arrayBuffer());
+    else if(ext==="pdf")rows=await rowsFromPdf(await f.arrayBuffer());
+    else{imp=null;box.innerHTML=`<p class="status warn">Dit bestandstype kan de app niet lezen. Gebruik .csv, .txt, .xlsx, .docx of .pdf, of plak het plan hierboven.</p>`;return}
+    imp=parseRows(rows);renderImport()}
+  catch(err){imp=null;box.innerHTML=`<p class="status warn">${String(err&&err.message)==="LIB"?"Kon de lezer voor dit bestandstype niet laden. Controleer je internet en probeer opnieuw.":"Dit bestand kon niet gelezen worden. Is het een oud .doc-bestand of beveiligd? Sla het op als .docx, .xlsx of .pdf, of plak de tekst."}</p>`}});
+$("impParse").addEventListener("click",()=>{const t=$("impText").value;if(!t.trim()){$("impText").focus();return}$("impFileName").textContent="Tik hier om een bestand te kiezen";$("impFile").value="";imp=parsePlan(t);renderImport()});
+$("impText").addEventListener("paste",()=>setTimeout(()=>$("impParse").click(),60));
+$("impSample").addEventListener("click",()=>{const blob=new Blob(["\uFEFF"+IMP_SAMPLE],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="voltage-plan-voorbeeld.csv";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)});
+function renderImport(){const box=$("impPreview");if(!imp){box.innerHTML="";return}
+  const it=imp.items;const cnt={};it.forEach(x=>cnt[x.kind]=(cnt[x.kind]||0)+1);
+  const first=it[0],last=it[it.length-1];
+  const exists=imp.goal&&G.find(g=>g.title.toLowerCase()===imp.goal.title.toLowerCase()&&g.date===imp.goal.date);
+  box.innerHTML=(it.length?`<div class="imp-sum">
+      ${imp.goal?`<div class="imp-goal"><span>EVENT</span><b>${esc(imp.goal.title)}</b><em>${dayName(pd(imp.goal.date))} ${fd(pd(imp.goal.date))} ${pd(imp.goal.date).getFullYear()}</em></div>`:`<p class="note-s">Geen doel gevonden. De sessies worden zonder doel op de kalender gezet.</p>`}
+      <div class="kv"><div><b>${it.length}</b>sessies</div><div><b>${fd(pd(first.date))}</b>eerste dag</div><div><b>${fd(pd(last.date))}</b>laatste dag</div>${Object.entries(cnt).map(([k,n])=>`<div><b>${n}</b>${KIND[k].l.toLowerCase()}</div>`).join("")}</div>
+      ${exists?`<p class="status warn" style="margin:8px 0">Dit doel bestaat al. Bij importeren wordt de oude planning ervan vervangen door deze.</p>`:""}
+      <div class="imp-list">${it.slice(0,60).map(x=>`<div class="imp-row"><span class="kindtag" style="background:${KIND[x.kind].c}">${KIND[x.kind].l.toUpperCase()}</span><b>${dayName(pd(x.date)).slice(0,2)} ${fd(pd(x.date))}</b><span>${esc(x.title)}${x.km?` · ${nfmt(x.km)} km`:""}</span></div>`).join("")}${it.length>60?`<p class="note-s">… en nog ${it.length-60} sessies</p>`:""}</div></div>`
+    :`<p class="status warn">Geen sessies gevonden in dit bestand.</p>`)+
+    (imp.errors.length?`<div class="imp-err"><b>${imp.errors.length} lijn${imp.errors.length>1?"en":""} overgeslagen:</b>${imp.errors.slice(0,8).map(e=>`<div>${esc(e)}</div>`).join("")}</div>`:"");
+  $("impGo").disabled=!it.length;$("impGo").textContent=it.length?`Importeer ${it.length} sessies`:"Importeren"}
+$("impGo").addEventListener("click",async()=>{if(!imp||!imp.items.length)return;
+  const data=imp;closeSheet("impSheet");busy++;
+  try{let goalId="";
+    if(data.goal){const ex=G.find(g=>g.title.toLowerCase()===data.goal.title.toLowerCase()&&g.date===data.goal.date);
+      if(ex){goalId=ex.id;const old=P.filter(p=>p.goalId===ex.id).map(p=>p.id);if(old.length){setStatus("Oude planning verwijderen…");apply(await call("deletePlanItems",old))}}
+      else{setStatus("Doel aanmaken…");const r=await call("saveGoal",{title:data.goal.title,date:data.goal.date,note:data.goal.note,createdBy:who||""});goalId=r.savedId;apply(r)}}
+    const items=data.items.map(x=>Object.assign({},x,{goalId}));
+    for(let i=0;i<items.length;i+=400){setStatus(`Sessies op de kalender zetten… (${Math.min(i+400,items.length)}/${items.length})`);apply(await call("addPlanItems",items.slice(i,i+400)))}
+    busy--;selDate=items[0].date>=TODAY?items[0].date:TODAY;syncMonth();render();setStatus(`${items.length} sessies geïmporteerd${data.goal?` voor ${data.goal.title}`:""}.`)}
+  catch(e){busy--;setStatus(errText(e),true);refresh()}});
+
 // ================= WORKOUT EDITOR =================
 let ed=null; // {id,date,kind,data,feel,note,staged:[]}
 function openEditor(o){
@@ -244,7 +407,7 @@ function openEditor(o){
   const w=o.id?byId[o.id]:null;
   ed={id:w?w.id:null,date:w?w.date:o.date,kind:w?w.kind:(o.kind||null),data:w?JSON.parse(JSON.stringify(w.data||{})):{},feel:w?w.feel:null,note:w?w.note:"",staged:[],tplId:null,tplMode:"none",tplName:""};
   if(w&&w.data&&w.data.tplId&&TP.some(t=>t.id===w.data.tplId&&t.person===who)){ed.tplId=w.data.tplId;ed.tplMode="keep"}
-  if(!w&&ed.kind==="run")ed.data={rt:o.rt||"z2"};
+  if(!w&&ed.kind==="run"){ed.data={rt:o.rt||"z2"};if(o.env)ed.data.env=o.env}
   if(!w&&ed.kind==="run"&&o.planKm){if(ed.data.rt==="long"||ed.data.rt==="z2")ed.data.dist=o.planKm}
   if(!w&&(ed.kind==="upper"||ed.kind==="lower"))ed.data={ex:[]};
   if(ed.kind==="run"&&!ed.data.rt)ed.data.rt="z2";
@@ -515,12 +678,12 @@ function ask(text,o={}){return new Promise(res=>{
 function openSheet(id){$(id).classList.add("open")}
 function closeSheet(id){$(id).classList.remove("open");if(id==="vSheet")viewId=null}
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>closeSheet(b.dataset.close)));
-["wSheet","vSheet","gSheet","plSheet"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id))closeSheet(id)}));
+["wSheet","vSheet","gSheet","plSheet","impSheet"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id))closeSheet(id)}));
 $("pSheet").addEventListener("click",e=>{if(e.target===$("pSheet"))closePicker()});
 document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;
   if($("lightbox").classList.contains("open")){$("lightbox").classList.remove("open");return}
   if($("pSheet").classList.contains("open")){closePicker();return}
-  for(const id of ["gSheet","plSheet","wSheet","vSheet"])if($(id).classList.contains("open")){closeSheet(id);return}});
+  for(const id of ["impSheet","gSheet","plSheet","wSheet","vSheet"])if($(id).classList.contains("open")){closeSheet(id);return}});
 
 // ================= SERVER =================
 let stTimer=null,busy=0;
