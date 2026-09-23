@@ -68,7 +68,7 @@ function knokkePhase(ds){const n=Math.round((pd(ds)-K_START)/864e5);if(n<0||n>55
 // ================= STATE =================
 let who=null,pin=null,lastSeen=0;
 try{who=localStorage.getItem("knokke-who");pin=localStorage.getItem("knokke-pin");lastSeen=Number(localStorage.getItem("knokke-seen-"+who))||0}catch(e){}
-let W=[],C=[],G=[],P=[],TP=[],PR=[],B=[];  // workouts, comments, goals, plan, opgeslagen workouts
+let W=[],C=[],G=[],P=[],TP=[],PR=[],B=[],RC=[];  // workouts, comments, goals, plan, opgeslagen workouts
 let byId={};
 let selDate=TODAY, viewMonth=new Date(T0.getFullYear(),T0.getMonth(),1);
 const photoCache={};
@@ -491,6 +491,9 @@ function renderEditor(){
 }
 // ---------- opgeslagen workouts ----------
 const REPS=[...Array(30).keys()].map(i=>i+1).concat([35,40,45,50,60,75,90,100,120]);
+const CAT={bulking:"Bulking",cutting:"Cutting",maintenance:"Maintenance"};
+let phase="all";try{phase=localStorage.getItem("voltage-phase")||"all"}catch(_){}
+function setPhase(p){phase=p;try{localStorage.setItem("voltage-phase",p)}catch(_){}}
 function myTpls(kind){return TP.filter(t=>t.person===who&&t.kind===kind).sort((a,b)=>a.name.localeCompare(b.name))}
 function otherTpls(kind){return TP.filter(t=>t.person!==who&&t.kind===kind).sort((a,b)=>a.name.localeCompare(b.name))}
 function hasInput(){const d=ed.data||{};return (d.ex&&d.ex.length)||(ed.kind==="run"&&runKm(d)>0)}
@@ -499,8 +502,14 @@ function renderTplBar(body){
   const bar=document.createElement("div");bar.className="tplbar";
   if(!mine.length&&!other.length){bar.innerHTML=`<p class="note-s" style="margin:0">Nog geen opgeslagen ${KIND[ed.kind].l.toLowerCase()}-workouts. Vul je training in en vink onderaan <b>Bewaar als workout</b> aan, dan kan je ze de volgende keer in één tik laden.</p>`;body.appendChild(bar);return}
   const cur=ed.tplId||ed.tplFrom||"";
-  bar.innerHTML=`<label>Opgeslagen workout laden<select id="tplSel"><option value="">— Kies een workout —</option>${mine.length?`<optgroup label="Mijn workouts">${mine.map(t=>`<option value="${esc(t.id)}" ${t.id===cur?"selected":""}>${esc(t.name)}</option>`).join("")}</optgroup>`:""}${other.length?`<optgroup label="Van ${NAMES[oth]}">${other.map(t=>`<option value="${esc(t.id)}" ${t.id===cur?"selected":""}>${esc(t.name)}</option>`).join("")}</optgroup>`:""}</select></label>${ed.tplId?`<button class="rm" id="tplDel" type="button">Verwijder “${esc((TP.find(t=>t.id===ed.tplId)||{}).name||"")}”</button>`:""}`;
+  const fit=t=>phase==="all"||t.category===phase||t.id===cur;
+  const opt=t=>`<option value="${esc(t.id)}" ${t.id===cur?"selected":""}>${esc(t.name)}${phase==="all"&&t.category?` · ${CAT[t.category]}`:""}</option>`;
+  const grp=(label,list)=>{const l=list.filter(fit);return l.length?`<optgroup label="${label}">${l.map(opt).join("")}</optgroup>`:""};
+  const groups=grp("Mijn workouts",mine)+grp("Van "+NAMES[oth],other);
+  bar.innerHTML=`<div class="phasechips" role="group" aria-label="Fase">${[["all","Alle"]].concat(Object.entries(CAT)).map(([k,l])=>`<button type="button" data-phase="${k}" aria-pressed="${phase===k}">${l}</button>`).join("")}</div>
+  <label>Opgeslagen workout laden<select id="tplSel"><option value="">${groups?"— Kies een workout —":"Geen workouts in "+(CAT[phase]||"deze fase")}</option>${groups}</select></label>${ed.tplId?`<button class="rm" id="tplDel" type="button">Verwijder “${esc((TP.find(t=>t.id===ed.tplId)||{}).name||"")}”</button>`:""}`;
   body.appendChild(bar);
+  bar.querySelectorAll("[data-phase]").forEach(b=>b.addEventListener("click",()=>{setPhase(b.dataset.phase);renderEditor()}));
   $("tplSel").addEventListener("change",async e=>{const id=e.target.value;if(!id){ed.tplId=null;ed.tplFrom=null;ed.tplMode="none";renderEditor();return}
     const t=TP.find(x=>x.id===id);if(!t)return;
     if(hasInput()&&!(await ask("Wat je nu hebt ingevuld wordt vervangen.",{title:`“${t.name}” laden?`,ok:"Ja, laden"}))){e.target.value=cur;return}
@@ -516,7 +525,7 @@ function loadTpl(t,o={}){
   if(mine){ed.tplId=t.id;ed.tplFrom=null;ed.tplMode="update";ed.tplName=t.name}
   else{ed.tplId=null;ed.tplFrom=t.id;ed.tplMode="new";ed.tplName=t.name}
   // reps: altijd van je laatst gelogde sessie · gewicht: laatste of leeg (jouw keuze)
-  if(data.ex)data.ex.forEach(e=>{const last=lastFor(e.id,who,ed.date,ed.id);(e.sets||[]).forEach((s,i)=>{const ls=last&&(last.e.sets[i]||last.e.sets[last.e.sets.length-1]);
+  if(data.ex)data.ex.forEach(e=>{if(!e.sets||!e.sets.length)e.sets=[{r:null,kg:null},{r:null,kg:null},{r:null,kg:null}];const last=lastFor(e.id,who,ed.date,ed.id);(e.sets||[]).forEach((s,i)=>{const ls=last&&(last.e.sets[i]||last.e.sets[last.e.sets.length-1]);
     if(ls&&ls.r!=null)s.r=ls.r;
     s.kg=o.emptyKg?null:(ls&&ls.kg!=null?ls.kg:(mine?s.kg:null))})});
   if(ed.kind!=="run"&&!data.ex)data.ex=[];
@@ -531,10 +540,12 @@ function renderTplSave(){
     $("tplUpd").addEventListener("change",e=>{ed.tplMode=e.target.checked?"update":"keep"});
     $("tplAsNew").addEventListener("click",()=>{ed.tplId=null;ed.tplMode="new";ed.tplName="";renderEditor();setTimeout(()=>{const n=$("tplName");if(n)n.focus()},30)});
   }else{
-    const on=ed.tplMode==="new";
+    const on=ed.tplMode==="new";if(ed.tplCat==null)ed.tplCat=phase==="all"?"":phase;
     box.innerHTML=`<label class="chk"><input type="checkbox" id="tplNew" ${on?"checked":""}><span>Bewaar als workout<small>Zo kan je deze training later in één tik opnieuw laden.</small></span></label>${on?`<label>Naam van de workout<input id="tplName" maxlength="50" value="${esc(ed.tplName||"")}" placeholder="${ed.kind==="run"?"bv. Interval 6×800 m":ed.kind==="upper"?"bv. Push dag":"bv. Benen zwaar"}"></label>`:""}`;
     $("tplNew").addEventListener("change",e=>{ed.tplMode=e.target.checked?"new":"none";renderTplSave();if(e.target.checked)setTimeout(()=>$("tplName").focus(),30)});
-    const n=$("tplName");if(n)n.addEventListener("input",()=>{ed.tplName=n.value});
+    const n=$("tplName");if(n){n.addEventListener("input",()=>{ed.tplName=n.value});
+      n.parentNode.insertAdjacentHTML("afterend",`<label>Categorie<select id="tplCat"><option value="">— Geen categorie —</option>${Object.entries(CAT).map(([k,l])=>`<option value="${k}" ${ed.tplCat===k?"selected":""}>${l}</option>`).join("")}</select></label>`);
+      $("tplCat").addEventListener("change",e=>{ed.tplCat=e.target.value})}
   }
 }
 // ---------- volgorde wijzigen: oefening ingedrukt houden en verschuiven ----------
@@ -665,24 +676,26 @@ $("btnSave").addEventListener("click",async()=>{
   if(!ed||!ed.kind)return;
   const d=ed.data;
   if(ed.kind==="run"){d.km=Math.round(runKm(d)*100)/100}
-  else{d.ex=(d.ex||[]).map(e=>({id:e.id,sets:(e.sets||[]).filter(s=>s.r!=null||s.kg!=null)})).filter(e=>e.sets.length||true)}
+  const rawEx=ed.kind!=="run"?JSON.parse(JSON.stringify(d.ex||[])):null;
+  if(ed.kind!=="run"){d.ex=(d.ex||[]).map(e=>({id:e.id,sets:(e.sets||[]).filter(s=>s.r!=null||s.kg!=null)}))}
   if(ed.kind!=="run"&&!d.ex.length&&!(await ask("Je hebt nog geen oefeningen gekozen.",{title:"Toch opslaan?",ok:"Ja, opslaan"})))return;
   // opgeslagen workout (sjabloon)
   let tpl=null;
   if(ed.tplMode==="new"){const name=(ed.tplName||"").trim();if(!name){await ask("Geef je workout een naam, of vink 'Bewaar als workout' uit.",{alert:true,title:"Naam ontbreekt"});const n=$("tplName");if(n)n.focus();return}
     const same=myTpls(ed.kind).find(t=>t.name.toLowerCase()===name.toLowerCase());
     if(same&&!(await ask(`Je hebt al een workout “${same.name}”. Overschrijven met deze sessie?`,{title:"Overschrijven?",ok:"Ja, overschrijf"})))return;
-    tpl={id:same?same.id:null,name:same?same.name:name}}
-  else if(ed.tplMode==="update"&&ed.tplId){const t=TP.find(x=>x.id===ed.tplId);if(t)tpl={id:t.id,name:t.name}}
+    tpl={id:same?same.id:null,name:same?same.name:name,category:ed.tplCat||(same?same.category:"")||""}}
+  else if(ed.tplMode==="update"&&ed.tplId){const t=TP.find(x=>x.id===ed.tplId);if(t)tpl={id:t.id,name:t.name,category:t.category||""}}
   else if(ed.tplMode==="keep"&&ed.tplId){const t=TP.find(x=>x.id===ed.tplId);if(t){d.tplId=t.id;d.tplName=t.name}}
   if(ed.tplMode==="none"){delete d.tplId;delete d.tplName}
   const tplData=JSON.parse(JSON.stringify(d));delete tplData.tplId;delete tplData.tplName;delete tplData.km;delete tplData.min;
+  if(rawEx)tplData.ex=rawEx.map(e=>({id:e.id,sets:(e.sets&&e.sets.length?e.sets:[{r:null,kg:null},{r:null,kg:null},{r:null,kg:null}])}));
   const kind=ed.kind;
   try{localStorage.setItem(DKEY(),JSON.stringify({ed:Object.assign({},ed,{staged:[],note:$("fNote").value}),at:Date.now()}))}catch(_){}
   const staged=ed.staged.slice();const baseId=ed.id,date=ed.date,feel=ed.feel,note=$("fNote").value.trim();closeSheet("wSheet");
   busy++;setStatus("Opslaan…");
   try{let res;
-    if(tpl){setStatus("Workout bijwerken…");res=await call("saveTemplate",{id:tpl.id,person:who,kind,name:tpl.name,data:tplData});d.tplId=res.savedId;d.tplName=tpl.name}
+    if(tpl){setStatus("Workout bijwerken…");res=await call("saveTemplate",{id:tpl.id,person:who,kind,name:tpl.name,data:tplData,category:tpl.category});d.tplId=res.savedId;d.tplName=tpl.name}
     const payload={id:baseId,person:who,date,kind,title:kind==="run"?RT[d.rt]:KIND[kind].l,data:d,feel,note};
     setStatus("Opslaan…");res=await call("saveWorkout",payload);const id=res.savedId;
     for(let k=0;k<staged.length;k++){setStatus(`Foto ${k+1} van ${staged.length} opladen…`);res=await call("uploadPhoto",id,who,staged[k])}
@@ -750,11 +763,34 @@ function renderFeed(){const un=unread();const nb=$("newc");
   feed.querySelectorAll("[data-open]").forEach(li=>li.addEventListener("click",()=>{const w=byId[li.dataset.open];if(!w)return;if(w.person===who)openEditor({id:w.id});else openView(w.id)}))}
 $("newc").addEventListener("click",()=>{const un=unread();markSeen();render();if(un.length){const w=byId[un[un.length-1].logId];if(w){if(w.person===who)openEditor({id:w.id});else openView(w.id)}}});
 
+// ================= MIJN WORKOUTS (per fase) =================
+let wkPhase=null;
+function renderWorkoutsLib(){const box=$("wlib");if(!box)return;
+  if(!who){box.innerHTML=`<p class="dayempty">Tik bovenaan op je naam om je workouts te zien.</p>`;return}
+  if(wkPhase==null)wkPhase=phase==="all"?"bulking":phase;
+  const mine=TP.filter(t=>t.person===who);
+  const counts=k=>mine.filter(t=>(t.category||"")===k).length;
+  const tabs=Object.entries(CAT).concat([["","Zonder categorie"]]);
+  const list=mine.filter(t=>(t.category||"")===wkPhase).sort((a,b)=>a.kind.localeCompare(b.kind)||a.name.localeCompare(b.name));
+  box.innerHTML=`<div class="phasetabs" role="tablist">${tabs.map(([k,l])=>`<button role="tab" data-wkph="${k}" aria-selected="${wkPhase===k}">${l}<span>${counts(k)}</span></button>`).join("")}</div>`+
+    (list.length?`<div class="wlist2">${list.map(t=>{const n=t.kind==="run"?(RT[t.data&&t.data.rt]||"Run"):`${(t.data&&t.data.ex||[]).length} oefeningen`;
+      return `<div class="wl-row"><span class="kindtag" style="background:${KIND[t.kind].c}">${KIND[t.kind].l.toUpperCase()}</span><div class="wl-t"><b>${esc(t.name)}</b><span>${esc(n)}</span></div>
+      <select data-mvtpl="${esc(t.id)}" aria-label="Categorie van ${esc(t.name)}">${Object.entries(CAT).concat([["","Geen"]]).map(([k,l])=>`<option value="${k}" ${(t.category||"")===k?"selected":""}>${l}</option>`).join("")}</select>
+      <button class="sx" data-deltpl="${esc(t.id)}" aria-label="${esc(t.name)} verwijderen">×</button></div>`}).join("")}</div>`
+    :`<p class="dayempty">${wkPhase?`Nog geen workouts in ${CAT[wkPhase]}.`:"Alle workouts hebben een categorie."} Bewaar een training als workout en kies de categorie, of verplaats hier een bestaande workout.</p>`);
+  box.querySelectorAll("[data-wkph]").forEach(b=>b.addEventListener("click",()=>{wkPhase=b.dataset.wkph;renderWorkoutsLib()}));
+  box.querySelectorAll("[data-mvtpl]").forEach(sel=>sel.addEventListener("change",async()=>{const t=TP.find(x=>x.id===sel.dataset.mvtpl);if(!t)return;
+    await run("saveTemplate",[{id:t.id,person:who,kind:t.kind,name:t.name,data:t.data,category:sel.value}],`“${t.name}” staat nu in ${CAT[sel.value]||"Zonder categorie"}.`)}));
+  box.querySelectorAll("[data-deltpl]").forEach(b=>b.addEventListener("click",async()=>{const t=TP.find(x=>x.id===b.dataset.deltpl);if(!t)return;
+    if(!(await ask(`Opgeslagen workout “${t.name}” verwijderen? Je gelogde trainingen blijven bewaard.`,{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;
+    await run("deleteTemplate",[t.id,who],"Workout verwijderd.")}));
+}
+
 // ================= TABBLADEN =================
 let tab="train";try{tab=localStorage.getItem("voltage-tab")||"train"}catch(_){}
 function showTab(t){tab=t;try{localStorage.setItem("voltage-tab",t)}catch(_){}
   document.querySelectorAll("[data-tab]").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===t)));
-  $("tabTrain").hidden=t!=="train";$("tabProg").hidden=t!=="prog";if(t==="prog")renderProgress()}
+  $("tabTrain").hidden=t!=="train";$("tabProg").hidden=t!=="prog";$("tabRec").hidden=t!=="rec";if(t==="prog")renderProgress();if(t==="rec")renderRecipes()}
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{showTab(b.dataset.tab);window.scrollTo({top:$("tabTrain").offsetTop-80,behavior:"smooth"})}));
 
 // ================= PROGRESS / DASHBOARD =================
@@ -842,6 +878,83 @@ $("pfForm").addEventListener("submit",async e=>{e.preventDefault();closeSheet("p
 $("bwForm").addEventListener("submit",async e=>{e.preventDefault();const kg=num($("bwKg").value);if(!kg||kg<20||kg>400){ask("Vul een geldig gewicht in, bv. 82,5.",{alert:true});return}
   await run("addBodyWeight",[{person:who,date:$("bwDate").value||TODAY,kg}],"Gewicht opgeslagen.");$("bwKg").value=""});
 
+// ================= RECEPTEN =================
+const MEAL={ontbijt:"Ontbijt",lunch:"Lunch",diner:"Diner",snack:"Snack"};
+let recMeal="all",recPh="all",recView=null,recEdit=null;
+const kcalOf=r=>Math.round((num(r.protein)||0)*4+(num(r.carbs)||0)*4+(num(r.fat)||0)*9);
+function macroBar(r,big){const p=num(r.protein)||0,c=num(r.carbs)||0,f=num(r.fat)||0;const e=p*4+c*4+f*9;if(!e)return big?`<p class="note-s">Nog geen macro's ingevuld.</p>`:"";
+  const pc=x=>Math.round(x/e*100);
+  return `<div class="macros ${big?"big":""}"><div class="mbar"><i style="width:${pc(p*4)}%;background:var(--kracht)"></i><i style="width:${pc(c*4)}%;background:var(--run)"></i><i style="width:${pc(f*9)}%;background:var(--nel)"></i></div>
+  <div class="mvals"><span><b style="color:var(--kracht)">${nfmt(p)} g</b>Protein</span><span><b style="color:var(--run)">${nfmt(c)} g</b>Carbs</span><span><b style="color:var(--nel)">${nfmt(f)} g</b>Fat</span><span><b>${Math.round(e)}</b>kcal</span></div></div>`}
+function renderRecipes(){if($("tabRec").hidden)return;
+  $("recMeal").innerHTML=[["all","Alle maaltijden"]].concat(Object.entries(MEAL)).map(([k,l])=>`<button type="button" data-rmeal="${k}" aria-pressed="${recMeal===k}">${l}</button>`).join("");
+  $("recPhase").innerHTML=[["all","Alle fases"]].concat(Object.entries(CAT)).map(([k,l])=>`<button type="button" data-rph="${k}" aria-pressed="${recPh===k}">${l}</button>`).join("");
+  $("recMeal").querySelectorAll("[data-rmeal]").forEach(b=>b.addEventListener("click",()=>{recMeal=b.dataset.rmeal;renderRecipes()}));
+  $("recPhase").querySelectorAll("[data-rph]").forEach(b=>b.addEventListener("click",()=>{recPh=b.dataset.rph;renderRecipes()}));
+  const q=$("recSearch").value.trim().toLowerCase();
+  const list=RC.filter(r=>(recMeal==="all"||r.meal===recMeal)&&(recPh==="all"||r.phase===recPh)&&(!q||(r.name+" "+r.ingredients).toLowerCase().includes(q))).sort((a,b)=>a.name.localeCompare(b.name));
+  $("recList").innerHTML=list.length?list.map(r=>`<button class="rcard" data-rec="${esc(r.id)}"><div class="rtop"><b>${esc(r.name)}</b><span>${[r.meal?MEAL[r.meal]:"",r.phase?CAT[r.phase]:"",r.servings?r.servings+" porties":""].filter(Boolean).join(" · ")}</span></div>${macroBar(r)}</button>`).join("")
+    :`<div class="card"><p class="dayempty">${RC.length?"Geen recepten gevonden met deze filters.":"Nog geen recepten. Tik op <b>+ Nieuw recept</b> of <b>Recept plakken</b> om te beginnen."}</p></div>`;
+  $("recList").querySelectorAll("[data-rec]").forEach(b=>b.addEventListener("click",()=>openRecipe(b.dataset.rec)))}
+$("recSearch").addEventListener("input",renderRecipes);
+function openRecipe(id){const r=RC.find(x=>x.id===id);if(!r)return;recView=id;
+  $("rvTitle").textContent=r.name;$("rvSub").textContent=[r.meal?MEAL[r.meal]:"",r.phase?CAT[r.phase]:"",r.servings?`${r.servings} porties · macro's per portie`:"macro's per portie",r.createdBy&&NAMES[r.createdBy]?"van "+NAMES[r.createdBy]:""].filter(Boolean).join(" · ");
+  $("rvMacros").innerHTML=macroBar(r,true);
+  const li=r.ingredients.split("\n").map(x=>x.trim()).filter(Boolean),st=r.steps.split("\n").map(x=>x.trim()).filter(Boolean);
+  $("rvIngr").innerHTML=li.length?li.map(x=>`<li>${esc(x)}</li>`).join(""):`<li class="note-s">Geen ingrediënten ingevuld.</li>`;
+  $("rvSteps").innerHTML=st.length?st.map(x=>`<li>${esc(x)}</li>`).join(""):`<li class="note-s">Geen bereiding ingevuld.</li>`;
+  openSheet("rvSheet")}
+function openRecipeEditor(r,sub){recEdit=r&&r.id?r.id:null;r=r||{};
+  $("reTitle").textContent=recEdit?"Recept bewerken":"Nieuw recept";$("reSub").textContent=sub||"";
+  $("reName").value=r.name||"";$("reMeal").value=r.meal||"";$("rePhase").value=r.phase||"";$("reServ").value=r.servings??"";
+  $("reP").value=r.protein??"";$("reC").value=r.carbs??"";$("reF").value=r.fat??"";$("reIngr").value=r.ingredients||"";$("reSteps").value=r.steps||"";
+  updKcal();openSheet("reSheet");setTimeout(()=>$("reName").focus(),50)}
+function updKcal(){const k=kcalOf({protein:$("reP").value,carbs:$("reC").value,fat:$("reF").value});$("reKcal").textContent=k?`≈ ${k} kcal`:""}
+["reP","reC","reF"].forEach(id=>$(id).addEventListener("input",updKcal));
+$("btnRecNew").addEventListener("click",()=>{if(!pin)return;openRecipeEditor(null)});
+$("btnRecPaste").addEventListener("click",()=>{if(!pin)return;$("rpText").value="";openSheet("rpSheet");setTimeout(()=>$("rpText").focus(),50)});
+$("rvEdit").addEventListener("click",()=>{const r=RC.find(x=>x.id===recView);closeSheet("rvSheet");if(r)openRecipeEditor(r)});
+$("rvDel").addEventListener("click",async()=>{const r=RC.find(x=>x.id===recView);if(!r)return;if(!(await ask(`Recept “${r.name}” verwijderen?`,{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;closeSheet("rvSheet");await run("deleteRecipe",[r.id],"Recept verwijderd.")});
+$("reForm").addEventListener("submit",async e=>{e.preventDefault();const old=recEdit?RC.find(x=>x.id===recEdit):null;
+  const r={id:recEdit,createdBy:old?old.createdBy:(who||""),name:$("reName").value.trim(),meal:$("reMeal").value,phase:$("rePhase").value,servings:num($("reServ").value),
+    protein:num($("reP").value),carbs:num($("reC").value),fat:num($("reF").value),ingredients:$("reIngr").value.trim(),steps:$("reSteps").value.trim()};
+  if(!r.name){$("reName").focus();return}closeSheet("reSheet");await run("saveRecipe",[r],`Recept “${r.name}” opgeslagen.`)});
+// --- recept uit geplakte tekst halen ---
+function parseRecipe(text){
+  const lines=String(text||"").replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+/g," ").trim());
+  const r={name:"",ingredients:[],steps:[],protein:null,carbs:null,fat:null,servings:null,meal:"",phase:""};const found=[];
+  const ING=/^(ingredi[eë]nten|ingredients|benodigdheden|boodschappen|wat heb je nodig)\b\s*:?\s*/i,STEP=/^(bereiding(swijze)?|werkwijze|instructies|instructions|method|directions|stappen|zo maak je het|aan de slag)\b\s*:?\s*/i,MAC=/^(macro'?s|voedingswaarde[n]?|nutrition|voedingsinfo)\b/i;
+  const n1="(\\d+(?:[.,]\\d+)?)";let total=false,sec=null;
+  const grab=(l,words)=>{let m=l.match(new RegExp("(?:"+words+")\\s*[:=\\-]?\\s*"+n1+"\\s*g?\\b","i"))||l.match(new RegExp(n1+"\\s*g(?:ram)?\\s*(?:"+words+")\\b","i"));return m?num(m[1]):null};
+  const PW="prote[iï]ne?s?|protein|eiwit(?:ten)?",CW="carbs?|carbohydrates?|koolhydraten|kh",FW="vet(?:ten)?|fat|fats";
+  for(const raw of lines){let l=raw;if(!l)continue;
+    const isBullet=/^([-•*·]|\d+[.)])\s+/.test(l);const clean=l.replace(/^([-•*·]|\d+[.)]|stap \d+:?)\s*/i,"").trim();
+    // macro's (ook midden in een zin)
+    const p=grab(l,PW),c=grab(l,CW),f=grab(l,FW);const isMacroLine=(p!=null)+(c!=null)+(f!=null)>=1&&l.length<140&&!(sec==="ing"&&isBullet&&!/:/.test(l));
+    if(isMacroLine){if(p!=null&&r.protein==null)r.protein=p;if(c!=null&&r.carbs==null)r.carbs=c;if(f!=null&&r.fat==null)r.fat=f;if(/totaal|total|hele recept/i.test(l))total=true}
+    const sv=l.match(/(\d+)\s*(porties?|personen|pers\.?|servings?)\b/i)||l.match(/(?:porties?|personen|servings?|serves|voor|makes)\s*[:\-]?\s*(\d+)\b/i);
+    const isMeta=l.length<60&&!isBullet;
+    if(sv&&(isMeta||isMacroLine)&&r.servings==null)r.servings=+sv[1];
+    const ml=l.match(/\b(ontbijt|breakfast|lunch|diner|avondeten|dinner|snack|tussendoortje)\b/i);if(ml&&isMeta&&!r.meal)r.meal={ontbijt:"ontbijt",breakfast:"ontbijt",lunch:"lunch",diner:"diner",avondeten:"diner",dinner:"diner",snack:"snack",tussendoortje:"snack"}[ml[1].toLowerCase()];
+    const ph=l.match(/\b(bulk(?:ing)?|cut(?:ting)?|maintenance|onderhoud)\b/i);if(ph&&isMeta&&!r.phase)r.phase=/bulk/i.test(ph[1])?"bulking":/cut/i.test(ph[1])?"cutting":"maintenance";
+    if(ING.test(l)){sec="ing";const rest=l.replace(ING,"");if(rest)r.ingredients.push(...rest.split(/,\s*/));continue}
+    if(STEP.test(l)){sec="step";const rest=l.replace(STEP,"");if(rest)r.steps.push(rest);continue}
+    if(MAC.test(l)&&!isMacroLine){sec="mac";continue}
+    if(!r.name){r.name=l.replace(/^(recept|recipe)\s*[:\-]\s*/i,"").replace(/^#+\s*/,"");continue}
+    if(isMacroLine||sec==="mac"&&/\d/.test(l))continue;
+    if((sv||ml||ph)&&isMeta&&l.split(" ").length<=8)continue;
+    if(/^\d+\s*kcal\b|^kcal/i.test(l))continue;
+    if(sec==="ing")r.ingredients.push(clean);
+    else if(sec==="step")r.steps.push(clean);
+    else if(isBullet||/^\d+(?:[.,]\d+)?\s*(g|gr|gram|kg|ml|l|el|tl|stuks?|st|blik|teen|tenen)\b/i.test(l))r.ingredients.push(clean);
+    else r.steps.push(clean)}
+  if(total&&r.servings>1){["protein","carbs","fat"].forEach(k=>{if(r[k]!=null)r[k]=Math.round(r[k]/r.servings*10)/10})}
+  if(r.name)found.push("naam");if(r.ingredients.length)found.push(r.ingredients.length+" ingrediënten");if(r.steps.length)found.push(r.steps.length+" stappen");
+  if(r.protein!=null||r.carbs!=null||r.fat!=null)found.push("macro's");if(r.servings)found.push(r.servings+" porties");
+  return Object.assign(r,{ingredients:r.ingredients.join("\n"),steps:r.steps.join("\n"),found,total})}
+$("rpGo").addEventListener("click",()=>{const t=$("rpText").value;if(!t.trim()){$("rpText").focus();return}const r=parseRecipe(t);closeSheet("rpSheet");
+  openRecipeEditor(r,(r.found.length?"Herkend: "+r.found.join(", ")+". ":"Weinig herkend. ")+(r.total?"Macro's omgerekend per portie. ":"")+"Controleer en tik op Opslaan.")});
+
 // ================= EIGEN BEVESTIGINGSVENSTER =================
 function ask(text,o={}){return new Promise(res=>{
   const bg=$("askBg");$("askTitle").textContent=o.title||(o.alert?"Let op":"Ben je zeker?");$("askText").textContent=text;
@@ -856,12 +969,12 @@ function ask(text,o={}){return new Promise(res=>{
 function openSheet(id){$(id).classList.add("open")}
 function closeSheet(id){$(id).classList.remove("open");if(id==="vSheet")viewId=null}
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.dataset.close==="wSheet"?requestCloseEditor():closeSheet(b.dataset.close)));
-["wSheet","vSheet","gSheet","plSheet","impSheet","xSheet","pfSheet"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id))id==="wSheet"?requestCloseEditor():closeSheet(id)}));
+["wSheet","vSheet","gSheet","plSheet","impSheet","xSheet","pfSheet","rvSheet","reSheet","rpSheet"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id))id==="wSheet"?requestCloseEditor():closeSheet(id)}));
 $("pSheet").addEventListener("click",e=>{if(e.target===$("pSheet"))closePicker()});
 document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;
   if($("lightbox").classList.contains("open")){$("lightbox").classList.remove("open");return}
   if($("pSheet").classList.contains("open")){closePicker();return}
-  for(const id of ["xSheet","pfSheet","impSheet","gSheet","plSheet","wSheet","vSheet"])if($(id).classList.contains("open")){id==="wSheet"?requestCloseEditor():closeSheet(id);return}});
+  for(const id of ["xSheet","rpSheet","reSheet","rvSheet","pfSheet","impSheet","gSheet","plSheet","wSheet","vSheet"])if($(id).classList.contains("open")){id==="wSheet"?requestCloseEditor():closeSheet(id);return}});
 
 // ================= SERVER =================
 let stTimer=null,busy=0;
@@ -873,7 +986,7 @@ async function call(fn,...args){let r;
   if(!r.ok)throw new Error("HTTP_"+r.status);let j;try{j=await r.json()}catch(e){throw new Error("BAD_RESPONSE")}
   if(!j.ok)throw new Error(j.error||"ERROR");return j.data}
 async function run(fn,args,okMsg){busy++;setStatus("Bezig…");try{const res=await call(fn,...args);busy--;apply(res);setStatus(okMsg)}catch(e){busy--;setStatus(errText(e),true);refresh()}}
-function apply(d){if(!d)return;W=d.workouts||[];C=d.comments||[];G=d.goals||[];P=d.plan||[];TP=d.templates||[];PR=d.profiles||[];B=d.body||[];byId={};W.forEach(w=>byId[w.id]=w);render();
+function apply(d){if(!d)return;W=d.workouts||[];C=d.comments||[];G=d.goals||[];P=d.plan||[];TP=d.templates||[];PR=d.profiles||[];B=d.body||[];RC=d.recipes||[];byId={};W.forEach(w=>byId[w.id]=w);render();
   if(viewId&&$("vSheet").classList.contains("open")){const box=$("vThread");if(!box.contains(document.activeElement))renderThread(box,viewId)}}
 function isPinErr(e){return String(e&&e.message||e).indexOf("PIN_WRONG")>=0}
 async function refresh(){if(!pin||busy)return;
@@ -885,7 +998,7 @@ $("pinForm").addEventListener("submit",async e=>{e.preventDefault();const v=$("p
   catch(err){pin=old;$("pinErr").textContent=isPinErr(err)?"Die pincode klopt niet.":errText(err)}});
 
 // ================= RENDER =================
-function render(){renderHero();renderCal();renderWeek();renderGoals();renderFeed();renderProgress()}
+function render(){renderHero();renderCal();renderWeek();renderGoals();renderWorkoutsLib();renderFeed();renderProgress();renderRecipes()}
 renderWho();showTab(tab);render();
 if(!pin)askPin(false);else refresh();
 setInterval(()=>{if(document.visibilityState==="visible"&&!document.querySelector(".sheet-bg.open"))refresh()},30000);

@@ -44,6 +44,7 @@
 <nav class="tabs wrap" role="tablist" aria-label="Onderdelen">
   <button role="tab" data-tab="train" aria-selected="true">Training</button>
   <button role="tab" data-tab="prog" aria-selected="false">Progress</button>
+  <button role="tab" data-tab="rec" aria-selected="false">Recepten</button>
 </nav>
 
 <main class="wrap" id="tabTrain">
@@ -93,6 +94,12 @@
     </div>
   </section>
 
+  <section class="section card" aria-labelledby="wlib-h">
+    <div class="card-head"><h2 id="wlib-h">Mijn workouts</h2></div>
+    <p class="note-s" style="margin-top:4px">Je opgeslagen workouts per fase. Verplaats een workout met de keuzelijst.</p>
+    <div id="wlib"></div>
+  </section>
+
   <section class="section" aria-labelledby="feed-h">
     <h2 id="feed-h" style="margin-bottom:10px;font-family:var(--display);font-size:24px">Laatst gelogd &amp; reacties</h2>
     <div class="feed"><ul id="feed"></ul></div>
@@ -140,7 +147,19 @@
   </section>
 </main>
 
-<p class="appver wrap">VOLTAGE · versie 15 · <button type="button" id="btnRefresh">App vernieuwen</button></p>
+<main class="wrap" id="tabRec" hidden>
+  <section class="card">
+    <div class="card-head"><h2>Recepten</h2>
+      <div class="rec-actions"><button class="primary" id="btnRecNew">+ Nieuw recept</button><button class="textbtn" id="btnRecPaste">Recept plakken</button></div>
+    </div>
+    <input type="search" id="recSearch" placeholder="Zoek een recept of ingrediënt…" aria-label="Zoek een recept" style="margin-top:12px">
+    <div class="phasechips" id="recMeal" role="group" aria-label="Maaltijd" style="margin-top:10px"></div>
+    <div class="phasechips" id="recPhase" role="group" aria-label="Fase"></div>
+  </section>
+  <div id="recList" class="reclist"></div>
+</main>
+
+<p class="appver wrap">VOLTAGE · versie 16 · <button type="button" id="btnRefresh">App vernieuwen</button></p>
 
 <!-- Training loggen / bewerken -->
 <div class="sheet-bg" id="wSheet" role="dialog" aria-modal="true" aria-labelledby="wTitle">
@@ -248,6 +267,48 @@
     <button type="button" class="linkish" id="impSample">Voorbeeldbestand downloaden</button>
     <div id="impPreview"></div>
     <div class="actions" style="margin-top:14px"><button class="btn-sec" data-close="impSheet">Annuleren</button><button class="btn-save" id="impGo" disabled>Importeren</button></div>
+  </div>
+</div>
+
+<!-- Recept bekijken -->
+<div class="sheet-bg" id="rvSheet" role="dialog" aria-modal="true" aria-labelledby="rvTitle">
+  <div class="sheet big">
+    <div class="head"><div><h3 id="rvTitle">Recept</h3><p class="sub" id="rvSub"></p></div><button class="x" data-close="rvSheet" aria-label="Sluiten">×</button></div>
+    <div id="rvMacros"></div>
+    <div class="sub-h">Ingrediënten</div><ul class="ingr" id="rvIngr"></ul>
+    <div class="sub-h">Bereiding</div><ol class="steps" id="rvSteps"></ol>
+    <div class="actions"><button class="btn-del" id="rvDel">Wissen</button><button class="btn-save" id="rvEdit">Bewerken</button></div>
+  </div>
+</div>
+
+<!-- Recept bewerken -->
+<div class="sheet-bg" id="reSheet" role="dialog" aria-modal="true" aria-labelledby="reTitle">
+  <form class="sheet big" id="reForm">
+    <div class="head"><div><h3 id="reTitle">Nieuw recept</h3><p class="sub" id="reSub"></p></div><button class="x" type="button" data-close="reSheet" aria-label="Sluiten">×</button></div>
+    <label>Naam<input id="reName" maxlength="80" required placeholder="bv. Kip teriyaki bowl"></label>
+    <div class="grid3">
+      <label>Maaltijd<select id="reMeal"><option value="">—</option><option value="ontbijt">Ontbijt</option><option value="lunch">Lunch</option><option value="diner">Diner</option><option value="snack">Snack</option></select></label>
+      <label>Fase<select id="rePhase"><option value="">—</option><option value="bulking">Bulking</option><option value="cutting">Cutting</option><option value="maintenance">Maintenance</option></select></label>
+      <label>Porties<input id="reServ" type="number" inputmode="numeric" min="1" max="50"></label>
+    </div>
+    <div class="sub-h">Macro's per portie <span class="note-s" style="margin:0" id="reKcal"></span></div>
+    <div class="grid3">
+      <label>Protein (g)<input id="reP" type="number" inputmode="decimal" min="0" step="0.1"></label>
+      <label>Carbs (g)<input id="reC" type="number" inputmode="decimal" min="0" step="0.1"></label>
+      <label>Fat (g)<input id="reF" type="number" inputmode="decimal" min="0" step="0.1"></label>
+    </div>
+    <label>Ingrediënten <span class="note-s" style="margin:0">(één per lijn)</span><textarea id="reIngr" rows="6" placeholder="200 g kipfilet&#10;150 g rijst&#10;1 paprika"></textarea></label>
+    <label>Bereiding <span class="note-s" style="margin:0">(één stap per lijn)</span><textarea id="reSteps" rows="6" placeholder="Kook de rijst.&#10;Bak de kip goudbruin."></textarea></label>
+    <div class="actions"><button class="btn-sec" type="button" data-close="reSheet">Annuleren</button><button class="btn-save" type="submit">Opslaan</button></div>
+  </form>
+</div>
+
+<!-- Recept plakken -->
+<div class="sheet-bg" id="rpSheet" role="dialog" aria-modal="true" aria-labelledby="rpTitle">
+  <div class="sheet big">
+    <div class="head"><div><h3 id="rpTitle">Recept plakken</h3><p class="sub">Plak een recept (van een website, uit een chat of een notitie). De app herkent de naam, ingrediënten, bereiding, porties en macro's. Je controleert alles voor je opslaat.</p></div><button class="x" data-close="rpSheet" aria-label="Sluiten">×</button></div>
+    <textarea id="rpText" rows="12" placeholder="Kip teriyaki bowl&#10;2 porties · lunch&#10;Macro's per portie: 45 g protein, 55 g carbs, 12 g fat&#10;&#10;Ingrediënten&#10;- 300 g kipfilet&#10;- 150 g rijst&#10;&#10;Bereiding&#10;1. Kook de rijst.&#10;2. Bak de kip."></textarea>
+    <div class="actions"><button class="btn-sec" data-close="rpSheet">Annuleren</button><button class="btn-save" id="rpGo">Recept lezen</button></div>
   </div>
 </div>
 
