@@ -1,7 +1,7 @@
 {
-  "name": "Knokke 25K – Lorenzo & Nele",
+  "name": "Trainingsapp Lorenzo & Nele",
   "short_name": "Knokke 25K",
-  "description": "Trainingstracker voor de BESOX Trail Knokke 25 km",
+  "description": "Trainingen loggen, doelen plannen en elkaar aanmoedigen",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
