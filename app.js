@@ -749,5 +749,21 @@ renderWho();render();
 if(!pin)askPin(false);else refresh();
 setInterval(()=>{if(document.visibilityState==="visible"&&!document.querySelector(".sheet-bg.open"))refresh()},30000);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")refresh()});
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+// ================= UPDATES =================
+if(/[?&]v=\d+/.test(location.search))history.replaceState(null,"",location.pathname);
+// Nieuwe versie op GitHub? Dan haalt de app die vanzelf op en herlaadt één keer.
+if("serviceWorker" in navigator){
+  let reloaded=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(reloaded)return;reloaded=true;location.reload()});
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(reg=>{
+    const check=()=>reg.update().catch(()=>{});check();
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")check()});
+  }).catch(()=>{}));
+}
+// Noodknop: alles van deze app op dit toestel vernieuwen (pincode en naam blijven bewaard)
+$("btnRefresh").addEventListener("click",async()=>{
+  if(!(await ask("De app haalt de nieuwste versie op en herstart. Je pincode, naam en gegevens blijven bewaard.",{title:"App vernieuwen?",ok:"Ja, vernieuw"})))return;
+  try{if("serviceWorker" in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()))}
+    if(window.caches){const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)))}}catch(e){}
+  location.replace(location.pathname+"?v="+Date.now())});
 })();

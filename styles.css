@@ -490,3 +490,4 @@ button:focus-visible{outline:2px solid var(--volt);outline-offset:2px}
 .exc .top .anim,.vex .anim{cursor:pointer}
 
 .appver{text-align:center;font-size:11px;color:#55554f;margin:26px 0 20px;letter-spacing:1px}
+.appver button{border:0;background:none;color:var(--volt);font:inherit;letter-spacing:1px;text-decoration:underline;cursor:pointer;padding:4px}
