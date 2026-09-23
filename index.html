@@ -159,7 +159,7 @@
   <div id="recList" class="reclist"></div>
 </main>
 
-<p class="appver wrap">VOLTAGE · versie 16 · <button type="button" id="btnRefresh">App vernieuwen</button></p>
+<p class="appver wrap">VOLTAGE · versie 17 · <button type="button" id="btnRefresh">App vernieuwen</button></p>
 
 <!-- Training loggen / bewerken -->
 <div class="sheet-bg" id="wSheet" role="dialog" aria-modal="true" aria-labelledby="wTitle">
@@ -274,6 +274,7 @@
 <div class="sheet-bg" id="rvSheet" role="dialog" aria-modal="true" aria-labelledby="rvTitle">
   <div class="sheet big">
     <div class="head"><div><h3 id="rvTitle">Recept</h3><p class="sub" id="rvSub"></p></div><button class="x" data-close="rvSheet" aria-label="Sluiten">×</button></div>
+    <div id="rvPhoto"></div>
     <div id="rvMacros"></div>
     <div class="sub-h">Ingrediënten</div><ul class="ingr" id="rvIngr"></ul>
     <div class="sub-h">Bereiding</div><ol class="steps" id="rvSteps"></ol>
@@ -285,6 +286,7 @@
 <div class="sheet-bg" id="reSheet" role="dialog" aria-modal="true" aria-labelledby="reTitle">
   <form class="sheet big" id="reForm">
     <div class="head"><div><h3 id="reTitle">Nieuw recept</h3><p class="sub" id="reSub"></p></div><button class="x" type="button" data-close="reSheet" aria-label="Sluiten">×</button></div>
+    <div id="rePhoto" class="rephoto"></div>
     <label>Naam<input id="reName" maxlength="80" required placeholder="bv. Kip teriyaki bowl"></label>
     <div class="grid3">
       <label>Maaltijd<select id="reMeal"><option value="">—</option><option value="ontbijt">Ontbijt</option><option value="lunch">Lunch</option><option value="diner">Diner</option><option value="snack">Snack</option></select></label>
@@ -334,6 +336,17 @@
     <ol class="steps" id="xSteps"></ol>
     <a class="primary vidbtn" id="xVideo" target="_blank" rel="noopener">Bekijk video's op YouTube</a>
     <p class="credit">Foto's en uitleg: Free Exercise DB (publiek domein).</p>
+  </div>
+</div>
+
+<!-- Foto: camera of galerij -->
+<div class="sheet-bg" id="psSheet" role="dialog" aria-modal="true" aria-labelledby="psTitle" style="z-index:95;align-items:flex-end">
+  <div class="sheet ask">
+    <h3 id="psTitle">Foto toevoegen</h3>
+    <div class="ps-btns"><button type="button" class="primary" id="psCam">Camera</button><button type="button" class="primary" id="psGal">Galerij</button></div>
+    <div class="actions"><button type="button" class="btn-sec" data-close="psSheet">Annuleren</button></div>
+    <input type="file" id="inCam" accept="image/*" capture="environment" hidden>
+    <input type="file" id="inGal" accept="image/*" hidden>
   </div>
 </div>
 

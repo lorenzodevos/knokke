@@ -668,9 +668,9 @@ function renderEditPhotos(){const box=$("editPhotos");if(!box||!ed)return;box.in
   const w=ed.id?byId[ed.id]:null;const existing=w?w.photos||[]:[];
   existing.forEach(fid=>box.appendChild(photoTile(null,fid,async()=>{if(!(await ask("Deze foto verwijderen?",{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;await run("removePhoto",[ed.id,who,fid],"Foto verwijderd.");renderEditPhotos()})));
   ed.staged.forEach((u,k)=>box.appendChild(photoTile(u,null,()=>{ed.staged.splice(k,1);renderEditPhotos()})));
-  if(existing.length+ed.staged.length<MAXPH){const lab=document.createElement("label");lab.className="addph";lab.innerHTML=`<span>+ Foto</span><input type="file" accept="image/*" multiple>`;
-    lab.querySelector("input").addEventListener("change",async e=>{const files=[...e.target.files].slice(0,MAXPH-existing.length-ed.staged.length);
-      for(const f of files){try{ed.staged.push(await resize(f))}catch(err){setStatus("Die foto kon niet gelezen worden.",true)}}renderEditPhotos()});box.appendChild(lab)}}
+  if(existing.length+ed.staged.length<MAXPH){const btn=document.createElement("button");btn.type="button";btn.className="addph";btn.innerHTML=`<span>+ Foto</span>`;
+    btn.addEventListener("click",async()=>{const files=(await pickPhotos(true)).slice(0,MAXPH-existing.length-ed.staged.length);
+      for(const f of files){try{ed.staged.push(await resize(f))}catch(err){setStatus("Die foto kon niet gelezen worden.",true)}}renderEditPhotos();saveDraft()});box.appendChild(btn)}}
 // ---------- save / delete ----------
 $("btnSave").addEventListener("click",async()=>{
   if(!ed||!ed.kind)return;
@@ -741,8 +741,21 @@ function renderThread(box,id){box.innerHTML="";const t=document.createElement("d
   async function send(text,btn){btn.disabled=true;try{apply(await call("addComment",id,who,text));markSeen();renderThread(box,id);render()}catch(e){btn.disabled=false;setStatus(errText(e),true)}}}
 
 // ================= PHOTOS =================
-function loadPhoto(fid,img,wrap){if(photoCache[fid]){img.src=photoCache[fid];wrap.classList.remove("load");return}
-  call("getPhoto",fid).then(u=>{photoCache[fid]=u;img.src=u;wrap.classList.remove("load")}).catch(()=>{wrap.classList.remove("load")})}
+// Foto's worden na de eerste keer op je gsm bewaard, zodat ze daarna meteen verschijnen
+const PHOTO_CACHE="voltage-photos";const photoWait={};
+function getPhotoCached(fid){if(photoCache[fid])return Promise.resolve(photoCache[fid]);if(photoWait[fid])return photoWait[fid];
+  const key="/foto/"+fid;
+  return photoWait[fid]=(async()=>{try{if(window.caches){const c=await caches.open(PHOTO_CACHE);const hit=await c.match(key);if(hit){const u=await hit.text();photoCache[fid]=u;return u}}}catch(_){}
+    const u=await call("getPhoto",fid);photoCache[fid]=u;try{if(window.caches)(await caches.open(PHOTO_CACHE)).put(key,new Response(u)).catch(()=>{})}catch(_){}return u})().finally(()=>{delete photoWait[fid]})}
+function loadPhoto(fid,img,wrap){getPhotoCached(fid).then(u=>{img.src=u;wrap.classList.remove("load")}).catch(()=>{wrap.classList.remove("load")})}
+// Kiezen tussen camera en galerij (overal in de app)
+let pickDone=null;
+function pickPhotos(multi){return new Promise(res=>{pickDone=res;$("inGal").multiple=!!multi;openSheet("psSheet")})}
+function pickedFiles(input){const f=[...input.files];input.value="";closeSheet("psSheet");if(pickDone){const r=pickDone;pickDone=null;r(f)}}
+$("psCam").addEventListener("click",()=>{$("inCam").click()});
+$("psGal").addEventListener("click",()=>{$("inGal").click()});
+$("inCam").addEventListener("change",()=>pickedFiles($("inCam")));
+$("inGal").addEventListener("change",()=>pickedFiles($("inGal")));
 function photoTile(src,fid,onRemove){const w=document.createElement("div");w.className="ph"+(fid&&!src?" load":"");const img=document.createElement("img");img.alt="Workoutfoto";w.appendChild(img);
   if(src)img.src=src;else if(fid)loadPhoto(fid,img,w);img.addEventListener("click",()=>{if(img.src)lightbox(img.src)});
   if(onRemove){const x=document.createElement("button");x.className="x";x.type="button";x.setAttribute("aria-label","Foto verwijderen");x.textContent="×";x.addEventListener("click",e=>{e.stopPropagation();onRemove()});w.appendChild(x)}return w}
@@ -893,18 +906,34 @@ function renderRecipes(){if($("tabRec").hidden)return;
   $("recPhase").querySelectorAll("[data-rph]").forEach(b=>b.addEventListener("click",()=>{recPh=b.dataset.rph;renderRecipes()}));
   const q=$("recSearch").value.trim().toLowerCase();
   const list=RC.filter(r=>(recMeal==="all"||r.meal===recMeal)&&(recPh==="all"||r.phase===recPh)&&(!q||(r.name+" "+r.ingredients).toLowerCase().includes(q))).sort((a,b)=>a.name.localeCompare(b.name));
-  $("recList").innerHTML=list.length?list.map(r=>`<button class="rcard" data-rec="${esc(r.id)}"><div class="rtop"><b>${esc(r.name)}</b><span>${[r.meal?MEAL[r.meal]:"",r.phase?CAT[r.phase]:"",r.servings?r.servings+" porties":""].filter(Boolean).join(" · ")}</span></div>${macroBar(r)}</button>`).join("")
+  $("recList").innerHTML=list.length?list.map(r=>`<button class="rcard ${r.photo?"hasimg":""}" data-rec="${esc(r.id)}">${r.photo?`<div class="rimg load" data-photo="${esc(r.photo)}"></div>`:""}<div class="rtop"><b>${esc(r.name)}</b><span>${[r.meal?MEAL[r.meal]:"",r.phase?CAT[r.phase]:"",r.servings?r.servings+" porties":""].filter(Boolean).join(" · ")}</span></div>${macroBar(r)}</button>`).join("")
     :`<div class="card"><p class="dayempty">${RC.length?"Geen recepten gevonden met deze filters.":"Nog geen recepten. Tik op <b>+ Nieuw recept</b> of <b>Recept plakken</b> om te beginnen."}</p></div>`;
-  $("recList").querySelectorAll("[data-rec]").forEach(b=>b.addEventListener("click",()=>openRecipe(b.dataset.rec)))}
+  $("recList").querySelectorAll("[data-rec]").forEach(b=>b.addEventListener("click",()=>openRecipe(b.dataset.rec)));
+  hydratePhotos($("recList"))}
+// Recept-foto's pas laden als ze in beeld komen
+let photoIO=null;
+function showBg(el){getPhotoCached(el.dataset.photo).then(u=>{el.style.backgroundImage=`url("${u}")`;el.classList.remove("load")}).catch(()=>el.classList.remove("load"))}
+function hydratePhotos(root){const els=root.querySelectorAll("[data-photo]");if(!("IntersectionObserver" in window)){els.forEach(showBg);return}
+  if(!photoIO)photoIO=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){photoIO.unobserve(en.target);showBg(en.target)}}),{rootMargin:"200px"});
+  els.forEach(el=>photoIO.observe(el))}
 $("recSearch").addEventListener("input",renderRecipes);
 function openRecipe(id){const r=RC.find(x=>x.id===id);if(!r)return;recView=id;
   $("rvTitle").textContent=r.name;$("rvSub").textContent=[r.meal?MEAL[r.meal]:"",r.phase?CAT[r.phase]:"",r.servings?`${r.servings} porties · macro's per portie`:"macro's per portie",r.createdBy&&NAMES[r.createdBy]?"van "+NAMES[r.createdBy]:""].filter(Boolean).join(" · ");
+  $("rvPhoto").innerHTML=r.photo?`<div class="rimg big load" data-photo="${esc(r.photo)}"></div>`:"";if(r.photo)showBg($("rvPhoto").firstChild);
   $("rvMacros").innerHTML=macroBar(r,true);
   const li=r.ingredients.split("\n").map(x=>x.trim()).filter(Boolean),st=r.steps.split("\n").map(x=>x.trim()).filter(Boolean);
   $("rvIngr").innerHTML=li.length?li.map(x=>`<li>${esc(x)}</li>`).join(""):`<li class="note-s">Geen ingrediënten ingevuld.</li>`;
   $("rvSteps").innerHTML=st.length?st.map(x=>`<li>${esc(x)}</li>`).join(""):`<li class="note-s">Geen bereiding ingevuld.</li>`;
   openSheet("rvSheet")}
-function openRecipeEditor(r,sub){recEdit=r&&r.id?r.id:null;r=r||{};
+let recPhoto={fid:"",staged:null,remove:false};
+function renderRecPhoto(){const box=$("rePhoto");const has=recPhoto.staged||(recPhoto.fid&&!recPhoto.remove);
+  box.innerHTML=has?`<div class="rimg big ${recPhoto.staged?"":"load"}" ${recPhoto.staged?`style="background-image:url('${recPhoto.staged}')"`:`data-photo="${esc(recPhoto.fid)}"`}></div><div class="rp-actions"><button type="button" class="textbtn" id="rpChange">Andere foto</button><button type="button" class="rm" id="rpRemove">Verwijder foto</button></div>`
+    :`<button type="button" class="addph wide" id="rpAdd"><span>+ Foto van het gerecht</span></button>`;
+  if(has&&!recPhoto.staged)showBg(box.querySelector("[data-photo]"));
+  const pick=async()=>{const f=(await pickPhotos(false))[0];if(!f)return;try{recPhoto.staged=await resize(f);recPhoto.remove=false;renderRecPhoto()}catch(_){setStatus("Die foto kon niet gelezen worden.",true)}};
+  (box.querySelector("#rpAdd")||box.querySelector("#rpChange")).addEventListener("click",pick);
+  const rm=box.querySelector("#rpRemove");if(rm)rm.addEventListener("click",()=>{recPhoto.staged=null;recPhoto.remove=true;renderRecPhoto()})}
+function openRecipeEditor(r,sub){recEdit=r&&r.id?r.id:null;r=r||{};recPhoto={fid:r.photo||"",staged:null,remove:false};renderRecPhoto();
   $("reTitle").textContent=recEdit?"Recept bewerken":"Nieuw recept";$("reSub").textContent=sub||"";
   $("reName").value=r.name||"";$("reMeal").value=r.meal||"";$("rePhase").value=r.phase||"";$("reServ").value=r.servings??"";
   $("reP").value=r.protein??"";$("reC").value=r.carbs??"";$("reF").value=r.fat??"";$("reIngr").value=r.ingredients||"";$("reSteps").value=r.steps||"";
@@ -918,7 +947,13 @@ $("rvDel").addEventListener("click",async()=>{const r=RC.find(x=>x.id===recView)
 $("reForm").addEventListener("submit",async e=>{e.preventDefault();const old=recEdit?RC.find(x=>x.id===recEdit):null;
   const r={id:recEdit,createdBy:old?old.createdBy:(who||""),name:$("reName").value.trim(),meal:$("reMeal").value,phase:$("rePhase").value,servings:num($("reServ").value),
     protein:num($("reP").value),carbs:num($("reC").value),fat:num($("reF").value),ingredients:$("reIngr").value.trim(),steps:$("reSteps").value.trim()};
-  if(!r.name){$("reName").focus();return}closeSheet("reSheet");await run("saveRecipe",[r],`Recept “${r.name}” opgeslagen.`)});
+  if(!r.name){$("reName").focus();return}closeSheet("reSheet");const ph=Object.assign({},recPhoto);
+  busy++;setStatus("Recept opslaan…");
+  try{let res=await call("saveRecipe",r);const id=res.savedId;
+    if(ph.staged){setStatus("Foto opladen…");res=await call("uploadRecipePhoto",id,ph.staged)}
+    else if(ph.remove&&ph.fid)res=await call("removeRecipePhoto",id);
+    busy--;apply(res);setStatus(`Recept “${r.name}” opgeslagen.`)}
+  catch(e){busy--;setStatus(errText(e),true);refresh()}});
 // --- recept uit geplakte tekst halen ---
 function parseRecipe(text){
   const lines=String(text||"").replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+/g," ").trim());
@@ -969,12 +1004,12 @@ function ask(text,o={}){return new Promise(res=>{
 function openSheet(id){$(id).classList.add("open")}
 function closeSheet(id){$(id).classList.remove("open");if(id==="vSheet")viewId=null}
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.dataset.close==="wSheet"?requestCloseEditor():closeSheet(b.dataset.close)));
-["wSheet","vSheet","gSheet","plSheet","impSheet","xSheet","pfSheet","rvSheet","reSheet","rpSheet"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id))id==="wSheet"?requestCloseEditor():closeSheet(id)}));
+["wSheet","vSheet","gSheet","plSheet","impSheet","xSheet","pfSheet","rvSheet","reSheet","rpSheet","psSheet"].forEach(id=>$(id).addEventListener("click",e=>{if(e.target===$(id))id==="wSheet"?requestCloseEditor():closeSheet(id)}));
 $("pSheet").addEventListener("click",e=>{if(e.target===$("pSheet"))closePicker()});
 document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;
   if($("lightbox").classList.contains("open")){$("lightbox").classList.remove("open");return}
   if($("pSheet").classList.contains("open")){closePicker();return}
-  for(const id of ["xSheet","rpSheet","reSheet","rvSheet","pfSheet","impSheet","gSheet","plSheet","wSheet","vSheet"])if($(id).classList.contains("open")){id==="wSheet"?requestCloseEditor():closeSheet(id);return}});
+  for(const id of ["psSheet","xSheet","rpSheet","reSheet","rvSheet","pfSheet","impSheet","gSheet","plSheet","wSheet","vSheet"])if($(id).classList.contains("open")){id==="wSheet"?requestCloseEditor():closeSheet(id);return}});
 
 // ================= SERVER =================
 let stTimer=null,busy=0;

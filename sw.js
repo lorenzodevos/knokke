@@ -1,6 +1,6 @@
 // Service worker: maakt de app installeerbaar en snel.
 // Verhoog VERSION bij elke update zodat telefoons de nieuwe versie ophalen.
-const VERSION = "voltage-v16";
+const VERSION = "voltage-v17";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "oefeningen.js", "manifest.webmanifest",
   "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "favicon.png"];
 
@@ -10,7 +10,7 @@ self.addEventListener("install", e => {
     .then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== "voltage-photos").map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", e => {
   const req = e.request, url = new URL(req.url);
