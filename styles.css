@@ -474,7 +474,7 @@ button:focus-visible{outline:2px solid var(--volt);outline-offset:2px}
 .anim img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
 .anim .f1{animation:exflip 2.4s ease-in-out infinite}
 @keyframes exflip{0%,38%{opacity:0}50%,88%{opacity:1}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.anim .f1{animation:none;opacity:0}}
+/* Oefening-animatie speelt altijd, ook met 'beweging beperken' of batterijbesparing aan: het is een rustige overgang. */
 .pc .anim{aspect-ratio:4/3;width:100%;cursor:pointer}
 .anim.sm{width:72px;height:54px;border-radius:8px;flex:none}
 .anim.md{width:96px;height:72px;border-radius:8px;flex:none}
@@ -488,3 +488,5 @@ button:focus-visible{outline:2px solid var(--volt);outline-offset:2px}
 .steps li::marker{color:var(--volt);font-weight:800}
 .vidbtn{display:block;text-align:center;text-decoration:none}
 .exc .top .anim,.vex .anim{cursor:pointer}
+
+.appver{text-align:center;font-size:11px;color:#55554f;margin:26px 0 20px;letter-spacing:1px}
