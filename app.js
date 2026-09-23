@@ -68,7 +68,7 @@ function knokkePhase(ds){const n=Math.round((pd(ds)-K_START)/864e5);if(n<0||n>55
 // ================= STATE =================
 let who=null,pin=null,lastSeen=0;
 try{who=localStorage.getItem("knokke-who");pin=localStorage.getItem("knokke-pin");lastSeen=Number(localStorage.getItem("knokke-seen-"+who))||0}catch(e){}
-let W=[],C=[],G=[],P=[],TP=[],PR=[],B=[],RC=[];  // workouts, comments, goals, plan, opgeslagen workouts
+let W=[],C=[],G=[],P=[],TP=[],PR=[],B=[],RC=[],NT={};  // workouts, comments, goals, plan, opgeslagen workouts
 let byId={};
 let selDate=TODAY, viewMonth=new Date(T0.getFullYear(),T0.getMonth(),1);
 const photoCache={};
@@ -216,7 +216,8 @@ function openGoal(id){goalEdit=id||null;const g=id?G.find(x=>x.id===id):null;
   $("gDel").style.visibility=g?"visible":"hidden";openSheet("gSheet");setTimeout(()=>$("gName").focus(),50)}
 $("btnNewGoal").addEventListener("click",()=>openGoal(null));
 $("gForm").addEventListener("submit",async e=>{e.preventDefault();const g={id:goalEdit,title:$("gName").value.trim(),date:$("gDate").value,note:$("gNote").value.trim(),createdBy:who||""};
-  if(!g.title||!g.date)return;closeSheet("gSheet");await run("saveGoal",[g],"Doel opgeslagen.")});
+  if(!g.title||!g.date)return;closeSheet("gSheet");const isNew=!g.id;await run("saveGoal",[g],"Doel opgeslagen.");
+  if(isNew&&G.some(x=>x.title===g.title&&x.date===g.date))push(other(),`${NAMES[who]} plande een nieuw event`,`${g.title} · ${dshort(g.date)}`)});
 $("gDel").addEventListener("click",async()=>{if(!goalEdit)return;const n=P.filter(p=>p.goalId===goalEdit).length;
   if(!(await ask(`Dit doel wissen?${n?` De ${n} geplande sessies ervan verdwijnen ook van de kalender.`:""}`,{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;closeSheet("gSheet");await run("deleteGoal",[goalEdit],"Doel gewist.")});
 
@@ -430,7 +431,7 @@ $("impGo").addEventListener("click",async()=>{if(!imp||!imp.items.length)return;
   try{let goalId="";
     if(data.goal){const ex=G.find(g=>g.title.toLowerCase()===data.goal.title.toLowerCase()&&g.date===data.goal.date);
       if(ex){goalId=ex.id;const old=P.filter(p=>p.goalId===ex.id).map(p=>p.id);if(old.length){setStatus("Oude planning verwijderen…");apply(await call("deletePlanItems",old))}}
-      else{setStatus("Doel aanmaken…");const r=await call("saveGoal",{title:data.goal.title,date:data.goal.date,note:data.goal.note,createdBy:who||""});goalId=r.savedId;apply(r)}}
+      else{setStatus("Doel aanmaken…");const r=await call("saveGoal",{title:data.goal.title,date:data.goal.date,note:data.goal.note,createdBy:who||""});goalId=r.savedId;apply(r);push(other(),`${NAMES[who]} plande een nieuw event`,`${data.goal.title} · ${dshort(data.goal.date)}`)}}
     const items=data.items.map(x=>Object.assign({},x,{goalId}));
     for(let i=0;i<items.length;i+=400){setStatus(`Sessies op de kalender zetten… (${Math.min(i+400,items.length)}/${items.length})`);apply(await call("addPlanItems",items.slice(i,i+400)))}
     busy--;selDate=items[0].date>=TODAY?items[0].date:TODAY;syncMonth();render();setStatus(`${items.length} sessies geïmporteerd${data.goal?` voor ${data.goal.title}`:""}.`)}
@@ -699,7 +700,7 @@ $("btnSave").addEventListener("click",async()=>{
     const payload={id:baseId,person:who,date,kind,title:kind==="run"?RT[d.rt]:KIND[kind].l,data:d,feel,note};
     setStatus("Opslaan…");res=await call("saveWorkout",payload);const id=res.savedId;
     for(let k=0;k<staged.length;k++){setStatus(`Foto ${k+1} van ${staged.length} opladen…`);res=await call("uploadPhoto",id,who,staged[k])}
-    busy--;clearDraft();apply(res);setStatus(tpl?(tpl.id?`Opgeslagen · “${tpl.name}” is bijgewerkt.`:`Opgeslagen · workout “${tpl.name}” bewaard.`):"Opgeslagen.")}
+    busy--;clearDraft();apply(res);if(!baseId)pushWorkout(payload);setStatus(tpl?(tpl.id?`Opgeslagen · “${tpl.name}” is bijgewerkt.`:`Opgeslagen · workout “${tpl.name}” bewaard.`):"Opgeslagen.")}
   catch(e){busy--;setStatus(errText(e)+" Je training staat nog als concept klaar.",true);const dr=getDraft();if(dr)openDraft(dr);refresh()}
 });
 $("btnDel").addEventListener("click",async()=>{if(!ed||!ed.id)return;if(!(await ask("Deze training wissen? Foto's en reacties verdwijnen ook.",{title:"Verwijderen?",ok:"Ja, verwijder",danger:true})))return;const id=ed.id;clearDraft();closeSheet("wSheet");await run("deleteWorkout",[id,who],"Gewist.")});
@@ -738,7 +739,7 @@ function renderThread(box,id){box.innerHTML="";const t=document.createElement("d
   if(owner!==who){const q=document.createElement("div");q.className="quick";QUICK.forEach(txt=>{const b=document.createElement("button");b.type="button";b.textContent=txt;b.addEventListener("click",()=>send(txt,b));q.appendChild(b)});box.appendChild(q)}
   const f=document.createElement("form");f.className="cform";f.innerHTML=`<input type="text" maxlength="500" placeholder="${owner===who?"Antwoord of extra boodschap…":"Schrijf een reactie…"}" aria-label="Reactie"><button type="submit">Stuur</button>`;box.appendChild(f);
   f.addEventListener("submit",e=>{e.preventDefault();const v=f.querySelector("input").value.trim();if(v)send(v,f.querySelector("button"))});
-  async function send(text,btn){btn.disabled=true;try{apply(await call("addComment",id,who,text));markSeen();renderThread(box,id);render()}catch(e){btn.disabled=false;setStatus(errText(e),true)}}}
+  async function send(text,btn){btn.disabled=true;try{apply(await call("addComment",id,who,text));pushComment(id,text);markSeen();renderThread(box,id);render()}catch(e){btn.disabled=false;setStatus(errText(e),true)}}}
 
 // ================= PHOTOS =================
 // Foto's worden na de eerste keer op je gsm bewaard, zodat ze daarna meteen verschijnen
@@ -952,7 +953,7 @@ $("reForm").addEventListener("submit",async e=>{e.preventDefault();const old=rec
   try{let res=await call("saveRecipe",r);const id=res.savedId;
     if(ph.staged){setStatus("Foto opladen…");res=await call("uploadRecipePhoto",id,ph.staged)}
     else if(ph.remove&&ph.fid)res=await call("removeRecipePhoto",id);
-    busy--;apply(res);setStatus(`Recept “${r.name}” opgeslagen.`)}
+    busy--;apply(res);if(!r.id&&who)push(other(),`${NAMES[who]} voegde een recept toe`,r.name);setStatus(`Recept “${r.name}” opgeslagen.`)}
   catch(e){busy--;setStatus(errText(e),true);refresh()}});
 // --- recept uit geplakte tekst halen ---
 function parseRecipe(text){
@@ -990,6 +991,28 @@ function parseRecipe(text){
 $("rpGo").addEventListener("click",()=>{const t=$("rpText").value;if(!t.trim()){$("rpText").focus();return}const r=parseRecipe(t);closeSheet("rpSheet");
   openRecipeEditor(r,(r.found.length?"Herkend: "+r.found.join(", ")+". ":"Weinig herkend. ")+(r.total?"Macro's omgerekend per portie. ":"")+"Controleer en tik op Opslaan.")});
 
+// ================= MELDINGEN (ntfy, verstuurd door de app zelf) =================
+function push(to,title,message){const topic=NT[to];if(!topic)return Promise.resolve(false);
+  // text/plain-verzoek: werkt vanuit de browser zonder account; ntfy leest de JSON zelf
+  return fetch("https://ntfy.sh/",{method:"POST",body:JSON.stringify({topic,title,message,click:location.origin+location.pathname,tags:["zap"]})})
+    .then(r=>r.ok).catch(()=>false)}
+const other=()=>who==="lor"?"nel":"lor";
+function dshort(ds){return fd(pd(ds))}
+function pushWorkout(pl){const d=pl.data||{};let what=pl.kind==="run"?(RT[d.rt]||"Run")+(isTM(d)&&d.rt!=="walk"?" op de loopband":""):KIND[pl.kind].l;
+  if(d.tplName)what+=" · "+d.tplName;let extra="";
+  if(pl.kind==="run"&&d.km)extra=nfmt(d.km)+" km";if(pl.kind!=="run"&&d.ex&&d.ex.length)extra=d.ex.length+" oefening"+(d.ex.length>1?"en":"");
+  return push(other(),`${NAMES[who]} heeft getraind`,`${what}${extra?" · "+extra:""} · ${dshort(pl.date)}`)}
+function pushComment(logId,text){const owner=logId.split("_")[0];const t=text.length>120?text.slice(0,117)+"…":text;
+  if(owner!==who)return push(owner,`${NAMES[who]} reageerde op je training`,t);
+  if(C.some(c=>c.logId===logId&&c.author===other()))return push(other(),`${NAMES[who]} antwoordde op je reactie`,t);
+  return Promise.resolve(false)}
+$("btnPushTest").addEventListener("click",async()=>{if(!who){ask("Tik eerst bovenaan op je naam.",{alert:true});return}
+  if(!NT.lor&&!NT.nel){ask("De server geeft nog geen meldingsnamen door. Publiceer de nieuwe Code.gs als nieuwe versie.",{alert:true,title:"Nog niet klaar"});return}
+  setStatus("Testmeldingen versturen…");
+  const [a,b]=await Promise.all([push("lor","VOLTAGE test",`Test van ${NAMES[who]}: meldingen voor Lorenzo werken.`),push("nel","VOLTAGE test",`Test van ${NAMES[who]}: meldingen voor Nele werken.`)]);
+  const txt=`Lorenzo: ${a?"verstuurd ✓":"mislukt"} · Nele: ${b?"verstuurd ✓":"mislukt"}`;
+  setStatus(txt,!(a&&b));ask(txt+(a&&b?". Krijgen jullie niets? Controleer dan het abonnement in de ntfy-app.":". Controleer je internetverbinding."),{alert:true,title:"Testmelding"})});
+
 // ================= EIGEN BEVESTIGINGSVENSTER =================
 function ask(text,o={}){return new Promise(res=>{
   const bg=$("askBg");$("askTitle").textContent=o.title||(o.alert?"Let op":"Ben je zeker?");$("askText").textContent=text;
@@ -1021,7 +1044,7 @@ async function call(fn,...args){let r;
   if(!r.ok)throw new Error("HTTP_"+r.status);let j;try{j=await r.json()}catch(e){throw new Error("BAD_RESPONSE")}
   if(!j.ok)throw new Error(j.error||"ERROR");return j.data}
 async function run(fn,args,okMsg){busy++;setStatus("Bezig…");try{const res=await call(fn,...args);busy--;apply(res);setStatus(okMsg)}catch(e){busy--;setStatus(errText(e),true);refresh()}}
-function apply(d){if(!d)return;W=d.workouts||[];C=d.comments||[];G=d.goals||[];P=d.plan||[];TP=d.templates||[];PR=d.profiles||[];B=d.body||[];RC=d.recipes||[];byId={};W.forEach(w=>byId[w.id]=w);render();
+function apply(d){if(!d)return;W=d.workouts||[];C=d.comments||[];G=d.goals||[];P=d.plan||[];TP=d.templates||[];PR=d.profiles||[];B=d.body||[];RC=d.recipes||[];if(d.ntfy)NT=d.ntfy;byId={};W.forEach(w=>byId[w.id]=w);render();
   if(viewId&&$("vSheet").classList.contains("open")){const box=$("vThread");if(!box.contains(document.activeElement))renderThread(box,viewId)}}
 function isPinErr(e){return String(e&&e.message||e).indexOf("PIN_WRONG")>=0}
 async function refresh(){if(!pin||busy)return;
