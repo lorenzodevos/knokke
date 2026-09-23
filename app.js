@@ -59,7 +59,7 @@ function knokkePhase(ds){const n=Math.round((pd(ds)-K_START)/864e5);if(n<0||n>55
 // ================= STATE =================
 let who=null,pin=null,lastSeen=0;
 try{who=localStorage.getItem("knokke-who");pin=localStorage.getItem("knokke-pin");lastSeen=Number(localStorage.getItem("knokke-seen-"+who))||0}catch(e){}
-let W=[],C=[],G=[],P=[];  // workouts, comments, goals, plan
+let W=[],C=[],G=[],P=[],TP=[];  // workouts, comments, goals, plan, opgeslagen workouts
 let byId={};
 let selDate=TODAY, viewMonth=new Date(T0.getFullYear(),T0.getMonth(),1);
 const photoCache={};
@@ -76,7 +76,7 @@ function runKm(d){if(!d)return 0;
   if(d.rt==="interval"){let k=(num(d.wu)||0)+(num(d.cd)||0);(d.blocks||[]).forEach(b=>{if(b.mode!=="time")k+=(num(b.reps)||0)*(num(b.dist)||0)/1000});return k}
   if(d.rt==="tempo")return (num(d.wu)||0)+(num(d.tdist)||0)+(num(d.cd)||0);
   return num(d.dist)||0}
-function woTitle(w){if(w.kind==="run")return RT[w.data&&w.data.rt]||"Run";return KIND[w.kind].l}
+function woTitle(w){const base=w.kind==="run"?(RT[w.data&&w.data.rt]||"Run"):KIND[w.kind].l;const tn=w.data&&w.data.tplName;return tn?`${base} · ${tn}`:base}
 function woSummary(w){const d=w.data||{};
   if(w.kind==="run"){const k=d.km!=null?d.km:runKm(d);const bits=[];if(k)bits.push(nfmt(k)+" km");
     if(d.rt==="interval"&&d.blocks&&d.blocks.length)bits.push(d.blocks.map(b=>`${b.reps||"?"}×${b.mode==="time"?(b.time||"?")+" min":(b.dist||"?")+" m"}`).join(" + "));
@@ -235,7 +235,8 @@ let ed=null; // {id,date,kind,data,feel,note,staged:[]}
 function openEditor(o){
   if(!who){alert("Tik eerst bovenaan op je naam.");return}
   const w=o.id?byId[o.id]:null;
-  ed={id:w?w.id:null,date:w?w.date:o.date,kind:w?w.kind:(o.kind||null),data:w?JSON.parse(JSON.stringify(w.data||{})):{},feel:w?w.feel:null,note:w?w.note:"",staged:[]};
+  ed={id:w?w.id:null,date:w?w.date:o.date,kind:w?w.kind:(o.kind||null),data:w?JSON.parse(JSON.stringify(w.data||{})):{},feel:w?w.feel:null,note:w?w.note:"",staged:[],tplId:null,tplMode:"none",tplName:""};
+  if(w&&w.data&&w.data.tplId&&TP.some(t=>t.id===w.data.tplId&&t.person===who)){ed.tplId=w.data.tplId;ed.tplMode="keep"}
   if(!w&&ed.kind==="run")ed.data={rt:o.rt||"z2"};
   if(!w&&ed.kind==="run"&&o.planKm){if(ed.data.rt==="long"||ed.data.rt==="z2")ed.data.dist=o.planKm}
   if(!w&&(ed.kind==="upper"||ed.kind==="lower"))ed.data={ex:[]};
@@ -254,13 +255,56 @@ document.querySelectorAll(".types button").forEach(b=>b.addEventListener("click"
   const k=b.dataset.kind;if(ed.kind===k)return;
   const hasData=(ed.data.ex&&ed.data.ex.length)||(ed.data.rt&&runKm(ed.data));
   if(hasData&&!confirm("Van soort wisselen? Wat je al invulde voor deze training gaat verloren."))return;
-  ed.kind=k;ed.data=k==="run"?{rt:"z2"}:{ex:[]};renderEditor()}));
+  ed.kind=k;ed.data=k==="run"?{rt:"z2"}:{ex:[]};ed.tplId=null;ed.tplMode="none";ed.tplName="";renderEditor()}));
 function renderEditor(){
   document.querySelectorAll(".types button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.kind===ed.kind)));
   const body=$("wBody");body.innerHTML="";$("wCommon").hidden=!ed.kind;$("btnSave").disabled=!ed.kind;
   if(!ed.kind){body.innerHTML=`<p class="note-s" style="text-align:center;margin:10px 0 18px">Kies hierboven wat je deze dag trainde.</p>`;return}
+  renderTplBar(body);
   if(ed.kind==="run")renderRun(body);else renderStrength(body);
-  renderEditPhotos();
+  renderEditPhotos();renderTplSave();
+}
+// ---------- opgeslagen workouts ----------
+const REPS=[...Array(30).keys()].map(i=>i+1).concat([35,40,45,50,60,75,90,100,120]);
+function myTpls(kind){return TP.filter(t=>t.person===who&&t.kind===kind).sort((a,b)=>a.name.localeCompare(b.name))}
+function otherTpls(kind){return TP.filter(t=>t.person!==who&&t.kind===kind).sort((a,b)=>a.name.localeCompare(b.name))}
+function hasInput(){const d=ed.data||{};return (d.ex&&d.ex.length)||(ed.kind==="run"&&runKm(d)>0)}
+function renderTplBar(body){
+  const mine=myTpls(ed.kind),other=otherTpls(ed.kind),oth=who==="lor"?"nel":"lor";
+  const bar=document.createElement("div");bar.className="tplbar";
+  if(!mine.length&&!other.length){bar.innerHTML=`<p class="note-s" style="margin:0">Nog geen opgeslagen ${KIND[ed.kind].l.toLowerCase()}-workouts. Vul je training in en vink onderaan <b>Bewaar als workout</b> aan, dan kan je ze de volgende keer in één tik laden.</p>`;body.appendChild(bar);return}
+  const cur=ed.tplId||ed.tplFrom||"";
+  bar.innerHTML=`<label>Opgeslagen workout laden<select id="tplSel"><option value="">— Kies een workout —</option>${mine.length?`<optgroup label="Mijn workouts">${mine.map(t=>`<option value="${esc(t.id)}" ${t.id===cur?"selected":""}>${esc(t.name)}</option>`).join("")}</optgroup>`:""}${other.length?`<optgroup label="Van ${NAMES[oth]}">${other.map(t=>`<option value="${esc(t.id)}" ${t.id===cur?"selected":""}>${esc(t.name)}</option>`).join("")}</optgroup>`:""}</select></label>${ed.tplId?`<button class="rm" id="tplDel" type="button">Verwijder “${esc((TP.find(t=>t.id===ed.tplId)||{}).name||"")}”</button>`:""}`;
+  body.appendChild(bar);
+  $("tplSel").addEventListener("change",e=>{const id=e.target.value;if(!id){ed.tplId=null;ed.tplFrom=null;ed.tplMode="none";renderEditor();return}
+    const t=TP.find(x=>x.id===id);if(!t)return;
+    if(hasInput()&&!confirm(`“${t.name}” laden? Wat je nu hebt ingevuld wordt vervangen.`)){e.target.value=cur;return}
+    loadTpl(t);renderEditor()});
+  const del=$("tplDel");if(del)del.addEventListener("click",async()=>{const t=TP.find(x=>x.id===ed.tplId);if(!t||!confirm(`Opgeslagen workout “${t.name}” verwijderen? Je gelogde trainingen blijven bewaard.`))return;
+    const id=t.id;ed.tplId=null;ed.tplMode="none";await run("deleteTemplate",[id,who],"Workout verwijderd.");renderEditor()});
+}
+function loadTpl(t){
+  const data=JSON.parse(JSON.stringify(t.data||{}));delete data.tplId;delete data.tplName;delete data.km;
+  if(t.person===who){ed.tplId=t.id;ed.tplFrom=null;ed.tplMode="update";ed.tplName=t.name}
+  else{ed.tplId=null;ed.tplFrom=t.id;ed.tplMode="new";ed.tplName=t.name;
+    if(data.ex)data.ex.forEach(e=>{const last=lastFor(e.id,who,ed.date,ed.id);(e.sets||[]).forEach((s,i)=>{const ls=last&&(last.e.sets[i]||last.e.sets[last.e.sets.length-1]);s.kg=ls?ls.kg:null})})}
+  if(ed.kind!=="run"&&!data.ex)data.ex=[];
+  if(ed.kind==="run"){if(!data.rt)data.rt="z2";if(data.rt==="interval"&&!data.blocks)data.blocks=[newBlock()]}
+  ed.data=data;
+}
+function renderTplSave(){
+  const box=$("wTpl");if(!box)return;box.innerHTML="";if(!ed.kind){box.hidden=true;return}box.hidden=false;
+  const t=ed.tplId?TP.find(x=>x.id===ed.tplId):null;
+  if(t){
+    box.innerHTML=`<label class="chk"><input type="checkbox" id="tplUpd" ${ed.tplMode==="update"?"checked":""}><span>Werk <b>“${esc(t.name)}”</b> bij met deze sessie<small>Nieuwe gewichten, sets en afstanden worden je vertrekpunt voor de volgende keer.</small></span></label><button type="button" class="linkish" id="tplAsNew">Of bewaar als nieuwe workout</button>`;
+    $("tplUpd").addEventListener("change",e=>{ed.tplMode=e.target.checked?"update":"keep"});
+    $("tplAsNew").addEventListener("click",()=>{ed.tplId=null;ed.tplMode="new";ed.tplName="";renderEditor();setTimeout(()=>{const n=$("tplName");if(n)n.focus()},30)});
+  }else{
+    const on=ed.tplMode==="new";
+    box.innerHTML=`<label class="chk"><input type="checkbox" id="tplNew" ${on?"checked":""}><span>Bewaar als workout<small>Zo kan je deze training later in één tik opnieuw laden.</small></span></label>${on?`<label>Naam van de workout<input id="tplName" maxlength="50" value="${esc(ed.tplName||"")}" placeholder="${ed.kind==="run"?"bv. Interval 6×800 m":ed.kind==="upper"?"bv. Push dag":"bv. Benen zwaar"}"></label>`:""}`;
+    $("tplNew").addEventListener("change",e=>{ed.tplMode=e.target.checked?"new":"none";renderTplSave();if(e.target.checked)setTimeout(()=>$("tplName").focus(),30)});
+    const n=$("tplName");if(n)n.addEventListener("input",()=>{ed.tplName=n.value});
+  }
 }
 // ---------- strength ----------
 function renderStrength(body){
@@ -273,15 +317,16 @@ function renderStrength(body){
     const card=document.createElement("div");card.className="exc";
     card.innerHTML=`<div class="top"><img src="${imgSrc(e.id)}" data-ex="${e.id}" alt="${esc(meta.n)}" loading="lazy"><div class="nm"><b>${esc(meta.n)}</b><span>${esc(meta.g)}</span></div><button class="rm" data-rmex="${ei}" aria-label="${esc(meta.n)} verwijderen">Verwijder</button></div>
       <div class="last">${last?`<em>Vorige keer (${fd(pd(last.w.date))}):</em> ${esc(setsTxt(last.e.sets))}`:`<em>Eerste keer deze oefening.</em>`}</div>
-      <div class="sets"><div class="sr h"><span>Set</span><span>Reps</span><span>Kg</span><span></span></div>
-      ${e.sets.map((s,si)=>`<div class="sr"><span class="n">${si+1}</span><input type="number" inputmode="numeric" min="0" value="${s.r??""}" data-ex="${ei}" data-set="${si}" data-f="r" aria-label="Set ${si+1} reps"><input type="number" inputmode="decimal" min="0" step="0.5" value="${s.kg??""}" data-ex="${ei}" data-set="${si}" data-f="kg" aria-label="Set ${si+1} kg"><button class="sx" data-rmset="${ei}:${si}" aria-label="Set ${si+1} verwijderen">×</button></div>`).join("")}
-      <button class="addset" data-addset="${ei}">+ Set toevoegen</button></div>`;
+      <div class="sets"><label class="setcount">Aantal sets<select data-setcount="${ei}" aria-label="Aantal sets ${esc(meta.n)}">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option ${n===e.sets.length?"selected":""}>${n}</option>`).join("")}</select></label>
+      <div class="sr h"><span>Set</span><span>Reps</span><span>Kg</span><span></span></div>
+      ${e.sets.map((s,si)=>`<div class="sr"><span class="n">${si+1}</span><select data-ex="${ei}" data-set="${si}" data-f="r" aria-label="Set ${si+1} reps"><option value="">—</option>${(REPS.includes(s.r)||s.r==null?REPS:REPS.concat([s.r]).sort((a,b)=>a-b)).map(n=>`<option ${n===s.r?"selected":""}>${n}</option>`).join("")}</select><input type="number" inputmode="decimal" min="0" step="0.5" value="${s.kg??""}" placeholder="kg" data-ex="${ei}" data-set="${si}" data-f="kg" aria-label="Set ${si+1} kg"><button class="sx" data-rmset="${ei}:${si}" aria-label="Set ${si+1} verwijderen">×</button></div>`).join("")}</div>`;
     body.appendChild(card)});
   const add=document.createElement("button");add.className="linkbtn";add.textContent="+ Oefening toevoegen";add.addEventListener("click",openPicker);body.appendChild(add);
   const dur=document.createElement("div");dur.innerHTML=`<label style="margin-top:12px">Duur (min)<input type="number" inputmode="numeric" min="0" id="sMin" value="${d.min??""}"></label>`;body.appendChild(dur);
   $("sMin").addEventListener("input",e=>{d.min=num(e.target.value)});
-  body.querySelectorAll("input[data-ex]").forEach(inp=>inp.addEventListener("input",()=>{d.ex[+inp.dataset.ex].sets[+inp.dataset.set][inp.dataset.f]=num(inp.value)}));
-  body.querySelectorAll("[data-addset]").forEach(b=>b.addEventListener("click",()=>{const s=d.ex[+b.dataset.addset].sets;const l=s[s.length-1]||{r:null,kg:null};s.push({r:l.r,kg:l.kg});renderEditor()}));
+  body.querySelectorAll("input[data-ex],select[data-ex]").forEach(inp=>inp.addEventListener(inp.tagName==="SELECT"?"change":"input",()=>{d.ex[+inp.dataset.ex].sets[+inp.dataset.set][inp.dataset.f]=num(inp.value)}));
+  body.querySelectorAll("[data-setcount]").forEach(sel=>sel.addEventListener("change",()=>{const s=d.ex[+sel.dataset.setcount].sets;const n=+sel.value;
+    while(s.length<n){const l=s[s.length-1]||{r:null,kg:null};s.push({r:l.r,kg:l.kg})}s.length=n;renderEditor()}));
   body.querySelectorAll("[data-rmset]").forEach(b=>b.addEventListener("click",()=>{const [a,c]=b.dataset.rmset.split(":").map(Number);d.ex[a].sets.splice(c,1);renderEditor()}));
   body.querySelectorAll("[data-rmex]").forEach(b=>b.addEventListener("click",()=>{d.ex.splice(+b.dataset.rmex,1);renderEditor()}));
   body.querySelectorAll(".exc img").forEach(im=>im.addEventListener("click",()=>lightbox(im.src)));
@@ -359,12 +404,25 @@ $("btnSave").addEventListener("click",async()=>{
   if(ed.kind==="run"){d.km=Math.round(runKm(d)*100)/100}
   else{d.ex=(d.ex||[]).map(e=>({id:e.id,sets:(e.sets||[]).filter(s=>s.r!=null||s.kg!=null)})).filter(e=>e.sets.length||true)}
   if(ed.kind!=="run"&&!d.ex.length&&!confirm("Je hebt nog geen oefeningen gekozen. Toch opslaan?"))return;
-  const payload={id:ed.id,person:who,date:ed.date,kind:ed.kind,title:ed.kind==="run"?RT[d.rt]:KIND[ed.kind].l,data:d,feel:ed.feel,note:$("fNote").value.trim()};
-  const staged=ed.staged.slice();closeSheet("wSheet");
+  // opgeslagen workout (sjabloon)
+  let tpl=null;
+  if(ed.tplMode==="new"){const name=(ed.tplName||"").trim();if(!name){alert("Geef je workout een naam, of vink 'Bewaar als workout' uit.");const n=$("tplName");if(n)n.focus();return}
+    const same=myTpls(ed.kind).find(t=>t.name.toLowerCase()===name.toLowerCase());
+    if(same&&!confirm(`Je hebt al een workout “${same.name}”. Overschrijven met deze sessie?`))return;
+    tpl={id:same?same.id:null,name:same?same.name:name}}
+  else if(ed.tplMode==="update"&&ed.tplId){const t=TP.find(x=>x.id===ed.tplId);if(t)tpl={id:t.id,name:t.name}}
+  else if(ed.tplMode==="keep"&&ed.tplId){const t=TP.find(x=>x.id===ed.tplId);if(t){d.tplId=t.id;d.tplName=t.name}}
+  if(ed.tplMode==="none"){delete d.tplId;delete d.tplName}
+  const tplData=JSON.parse(JSON.stringify(d));delete tplData.tplId;delete tplData.tplName;delete tplData.km;delete tplData.min;
+  const kind=ed.kind;
+  const staged=ed.staged.slice();const baseId=ed.id,date=ed.date,feel=ed.feel,note=$("fNote").value.trim();closeSheet("wSheet");
   busy++;setStatus("Opslaan…");
-  try{let res=await call("saveWorkout",payload);const id=res.savedId;
+  try{let res;
+    if(tpl){setStatus("Workout bijwerken…");res=await call("saveTemplate",{id:tpl.id,person:who,kind,name:tpl.name,data:tplData});d.tplId=res.savedId;d.tplName=tpl.name}
+    const payload={id:baseId,person:who,date,kind,title:kind==="run"?RT[d.rt]:KIND[kind].l,data:d,feel,note};
+    setStatus("Opslaan…");res=await call("saveWorkout",payload);const id=res.savedId;
     for(let k=0;k<staged.length;k++){setStatus(`Foto ${k+1} van ${staged.length} opladen…`);res=await call("uploadPhoto",id,who,staged[k])}
-    busy--;apply(res);setStatus("Opgeslagen.")}
+    busy--;apply(res);setStatus(tpl?(tpl.id?`Opgeslagen · “${tpl.name}” is bijgewerkt.`:`Opgeslagen · workout “${tpl.name}” bewaard.`):"Opgeslagen.")}
   catch(e){busy--;setStatus(errText(e),true);refresh()}
 });
 $("btnDel").addEventListener("click",async()=>{if(!ed||!ed.id)return;if(!confirm("Deze training wissen? Foto's en reacties verdwijnen ook."))return;const id=ed.id;closeSheet("wSheet");await run("deleteWorkout",[id,who],"Gewist.")});
@@ -445,7 +503,7 @@ async function call(fn,...args){let r;
   if(!r.ok)throw new Error("HTTP_"+r.status);let j;try{j=await r.json()}catch(e){throw new Error("BAD_RESPONSE")}
   if(!j.ok)throw new Error(j.error||"ERROR");return j.data}
 async function run(fn,args,okMsg){busy++;setStatus("Bezig…");try{const res=await call(fn,...args);busy--;apply(res);setStatus(okMsg)}catch(e){busy--;setStatus(errText(e),true);refresh()}}
-function apply(d){if(!d)return;W=d.workouts||[];C=d.comments||[];G=d.goals||[];P=d.plan||[];byId={};W.forEach(w=>byId[w.id]=w);render();
+function apply(d){if(!d)return;W=d.workouts||[];C=d.comments||[];G=d.goals||[];P=d.plan||[];TP=d.templates||[];byId={};W.forEach(w=>byId[w.id]=w);render();
   if(viewId&&$("vSheet").classList.contains("open")){const box=$("vThread");if(!box.contains(document.activeElement))renderThread(box,viewId)}}
 function isPinErr(e){return String(e&&e.message||e).indexOf("PIN_WRONG")>=0}
 async function refresh(){if(!pin||busy)return;

@@ -413,3 +413,17 @@ button:focus-visible{outline:2px solid var(--volt);outline-offset:2px}
 .tide{margin-top:18px}
 .brand svg{width:clamp(40px,9vw,64px);height:clamp(40px,9vw,64px)}
 @media (min-width:561px){.day{grid-template-columns:88px minmax(0,1fr)}}
+/* Opgeslagen workouts */
+.tplbar{border:1px solid rgba(212,255,0,.35);background:#141610;border-radius:12px;padding:10px 12px;margin-bottom:14px}
+.tplbar label{margin-bottom:0;color:var(--volt)}
+.tplbar .rm{margin-top:6px;padding:4px 0}
+.tplsave{border:1px dashed rgba(212,255,0,.45);border-radius:12px;padding:12px;margin-top:14px}
+.tplsave label{margin-bottom:0}
+.tplsave label + label{margin-top:10px}
+.chk{display:flex!important;gap:10px;align-items:flex-start;cursor:pointer;color:var(--ink)!important;font-size:15px!important}
+.chk input{width:22px;height:22px;margin:1px 0 0;flex:none;accent-color:#D4FF00}
+.chk small{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+.linkish{border:0;background:none;color:var(--volt);font-weight:700;cursor:pointer;padding:8px 0 0;font-size:14px;text-decoration:underline}
+.setcount{display:flex!important;align-items:center;gap:10px;margin:2px 0 10px!important;color:var(--ink)!important;font-weight:700}
+.setcount select{width:auto;min-width:74px;margin:0;padding:8px}
+.sets .sr select{margin:0;padding:8px;text-align:center;text-align-last:center}
