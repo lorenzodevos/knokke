@@ -41,7 +41,12 @@
   </div>
 </header>
 
-<main class="wrap">
+<nav class="tabs wrap" role="tablist" aria-label="Onderdelen">
+  <button role="tab" data-tab="train" aria-selected="true">Training</button>
+  <button role="tab" data-tab="prog" aria-selected="false">Progress</button>
+</nav>
+
+<main class="wrap" id="tabTrain">
   <section class="card tide" aria-labelledby="cal-h">
     <div class="card-head">
       <h2 id="cal-h">Kalender</h2>
@@ -92,8 +97,50 @@
     <h2 id="feed-h" style="margin-bottom:10px;font-family:var(--display);font-size:24px">Laatst gelogd &amp; reacties</h2>
     <div class="feed"><ul id="feed"></ul></div>
   </section>
-  <p class="appver">VOLTAGE · versie 14 · <button type="button" id="btnRefresh">App vernieuwen</button></p>
 </main>
+
+<main class="wrap" id="tabProg" hidden>
+  <section class="card">
+    <div class="card-head"><h2>Progress</h2>
+      <div class="seg pseg" role="group" aria-label="Van wie"><button data-pp="lor" aria-pressed="true">Lorenzo</button><button data-pp="nel" aria-pressed="false">Nele</button></div>
+    </div>
+    <div class="seg4 period" role="group" aria-label="Periode" style="margin:12px 0 0">
+      <button data-per="28" aria-pressed="false">4 weken</button><button data-per="91" aria-pressed="true">3 maanden</button><button data-per="365" aria-pressed="false">1 jaar</button><button data-per="all" aria-pressed="false">Alles</button>
+    </div>
+  </section>
+
+  <section class="card section" aria-labelledby="pf-h">
+    <div class="card-head"><h2 id="pf-h">Profiel</h2><button class="textbtn" id="btnProfile">Bewerken</button></div>
+    <div class="kv" id="pfKv"></div>
+  </section>
+
+  <section class="card section" aria-labelledby="bw-h">
+    <div class="card-head"><h2 id="bw-h">Lichaamsgewicht</h2><span class="delta" id="bwDelta"></span></div>
+    <form class="bwform" id="bwForm">
+      <label>Datum<input type="date" id="bwDate" required></label>
+      <label>Gewicht (kg)<input type="number" id="bwKg" inputmode="decimal" step="0.1" min="20" max="400" required placeholder="bv. 82,5"></label>
+      <button class="primary" type="submit">Toevoegen</button>
+    </form>
+    <div class="chart" id="bwChart"></div>
+    <div class="bwlist" id="bwList"></div>
+  </section>
+
+  <section class="card section" aria-labelledby="st-h">
+    <div class="card-head"><h2 id="st-h">Kracht</h2></div>
+    <p class="note-s">Per spiergroep: hoeveel sterker je bent dan bij de start van de periode. Gebaseerd op je zwaarste set per oefening (geschatte 1RM), bij oefeningen zonder gewicht op je aantal reps.</p>
+    <div class="tiles" id="stTiles"></div>
+    <div class="chart" id="stChart"></div>
+  </section>
+
+  <section class="card section" aria-labelledby="ex-h">
+    <div class="card-head"><h2 id="ex-h">Per oefening</h2></div>
+    <label>Oefening<select id="exSel"></select></label>
+    <div class="kv" id="exKv"></div>
+    <div class="chart" id="exChart"></div>
+  </section>
+</main>
+
+<p class="appver wrap">VOLTAGE · versie 15 · <button type="button" id="btnRefresh">App vernieuwen</button></p>
 
 <!-- Training loggen / bewerken -->
 <div class="sheet-bg" id="wSheet" role="dialog" aria-modal="true" aria-labelledby="wTitle">
@@ -202,6 +249,19 @@
     <div id="impPreview"></div>
     <div class="actions" style="margin-top:14px"><button class="btn-sec" data-close="impSheet">Annuleren</button><button class="btn-save" id="impGo" disabled>Importeren</button></div>
   </div>
+</div>
+
+<!-- Profiel -->
+<div class="sheet-bg" id="pfSheet" role="dialog" aria-modal="true" aria-labelledby="pfTitle">
+  <form class="sheet" id="pfForm">
+    <div class="head"><h3 id="pfTitle">Profiel</h3><button class="x" type="button" data-close="pfSheet" aria-label="Sluiten">×</button></div>
+    <div class="grid2">
+      <label>Leeftijd<input type="number" id="pfAge" inputmode="numeric" min="10" max="100"></label>
+      <label>Lengte (cm)<input type="number" id="pfHeight" inputmode="numeric" min="100" max="250"></label>
+    </div>
+    <p class="note-s">Je gewicht vul je in bij Lichaamsgewicht, zo zie je het verloop.</p>
+    <div class="actions"><button class="btn-sec" type="button" data-close="pfSheet">Annuleren</button><button class="btn-save" type="submit">Opslaan</button></div>
+  </form>
 </div>
 
 <!-- Uitvoering van een oefening -->
