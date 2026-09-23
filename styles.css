@@ -1,27 +1,18 @@
 
 :root{
-  --sea:#1F3B45; --sea-2:#2B4F5B; --mist:#EDF1F0; --paper:#FFFFFF;
-  --dune:#E2D3B3; --dune-2:#F3ECDD; --grass:#5F7F35; --ink:#18262C; --muted:#5E6E74; --line:#D6DEDD;
-  --lor:#2B72A0; --lor-soft:#DCEAF3; --nel:#B24A6C; --nel-soft:#F5DFE6;
-  --run:#C8553D; --tempo:#D98A2B; --lsd:#5F7F35; --kracht:#3F5E86; --rust:#98A4A8; --race:#C39A1E; --kino:#6F4A8E;
-  --primary:#1F3B45; --on-primary:#FFFFFF; --sel-border:#1F3B45;
+  /* VOLTAGE – zwart + volt */
+  --volt:#D4FF00; --on-volt:#0B0B0C;
+  --sea:#0B0B0C; --sea-2:#1C1C1F; --mist:#0B0B0C; --paper:#161618;
+  --dune:#D4FF00; --dune-2:#1F1F22; --grass:#2EE6A6; --ink:#F4F4F1; --muted:#9B9B97; --line:#2B2B2F;
+  --lor:#D4FF00; --lor-soft:#262E00; --nel:#FF4F9A; --nel-soft:#3A1426;
+  --run:#FF6A3D; --tempo:#D4FF00; --lsd:#2EE6A6; --kracht:#6C8CFF; --rust:#5E5E64; --race:#D4FF00; --kino:#A77BFF;
+  --primary:#D4FF00; --on-primary:#0B0B0C; --sel-border:#D4FF00;
   --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
   --body:"Source Sans 3","Segoe UI",Helvetica,Arial,sans-serif;
+  color-scheme:dark;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --mist:#101A1E; --paper:#172429; --ink:#E6ECEC; --muted:#9AAAAE; --line:#2A3A40;
-    --dune-2:#22302F; --lor-soft:#1D3444; --nel-soft:#3A2230; --sea:#16323B; --sea-2:#1E3F4A;
-    --primary:#E9D9B6; --on-primary:#13211F; --sel-border:#E9D9B6;
-  }
-}
-:root[data-theme="dark"]{
-  --mist:#101A1E; --paper:#172429; --ink:#E6ECEC; --muted:#9AAAAE; --line:#2A3A40;
-  --dune-2:#22302F; --lor-soft:#1D3444; --nel-soft:#3A2230; --sea:#16323B; --sea-2:#1E3F4A;
-  --primary:#E9D9B6; --on-primary:#13211F; --sel-border:#E9D9B6;
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -365,3 +356,60 @@ html,body{overflow-x:hidden}
 .hero-goal b{font-size:22px}
 .phase[hidden]{display:none}
 @media (max-width:560px){.hero-goal{text-align:left}}
+
+/* ===================== VOLTAGE ===================== */
+header.hero{background:radial-gradient(120% 90% at 100% 0%,rgba(212,255,0,.14),transparent 55%),#0B0B0C;color:var(--ink);padding:22px 0 26px;border-bottom:2px solid var(--volt)}
+.brand-row{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.brand svg{width:44px;height:44px;flex:none;filter:drop-shadow(0 0 12px rgba(212,255,0,.45))}
+.brand h1{margin:0;font-family:var(--display);font-style:italic;font-weight:800;font-size:clamp(44px,11vw,72px);line-height:.85;letter-spacing:1px}
+.brand .tag{margin:6px 0 0;font-family:var(--display);font-weight:700;font-size:20px;color:var(--volt);letter-spacing:.5px}
+.ev{border:1px solid rgba(212,255,0,.55);background:linear-gradient(160deg,rgba(212,255,0,.08),rgba(212,255,0,0) 60%),#111113;border-radius:16px;padding:14px 18px 16px;min-width:250px;cursor:pointer;text-align:left;color:var(--ink)}
+.ev:hover{border-color:var(--volt)}
+.ev-label{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--volt)}
+.ev-main{display:flex;align-items:baseline;gap:8px;margin-top:2px}
+.ev-days{font-family:var(--display);font-style:italic;font-weight:800;font-size:clamp(64px,15vw,96px);line-height:.9;color:var(--volt);text-shadow:0 0 24px rgba(212,255,0,.35)}
+.ev-unit{font-family:var(--display);font-weight:700;font-size:22px;color:var(--ink)}
+.ev-title{font-family:var(--display);font-weight:700;font-size:22px;line-height:1.1;margin-top:4px}
+.ev-date{font-size:14px;color:var(--muted);margin-top:2px}
+@media (max-width:560px){.ev{width:100%}}
+.who-label{color:var(--muted)}
+.who-label.need{color:var(--volt)}
+.who{background:#1C1C1F}
+.who button{color:#CFCFCB}
+.who button[aria-pressed="true"].lor{background:var(--lor);color:var(--on-volt)}
+.who button[aria-pressed="true"].nel{background:var(--nel);color:#fff}
+.who.need{box-shadow:0 0 0 2px var(--volt)}
+/* tekst op volt altijd donker */
+.cd.today .dn,.newc,.dname em,.feel button[aria-pressed="true"],.tick.ok.lor,.kindtag,.event[style*="--race"],
+.av[style*="var(--lor)"],.cm .av[style*="--lor"]{color:var(--on-volt)}
+.event[style*="--race"] span{opacity:.75}
+.kindtag{font-weight:800}
+.sheet-bg{background:rgba(0,0,0,.72)}
+.feed li.unread{background:linear-gradient(90deg,rgba(212,255,0,.12),transparent)}
+.day.raceday{box-shadow:inset 0 0 0 2px var(--volt)}
+.day.today{box-shadow:inset 0 0 0 2px rgba(212,255,0,.5)}
+.card,.day,.feed,.tide{border:1px solid #202023}
+.pcard{border-top:1px solid #202023;border-right:1px solid #202023;border-bottom:1px solid #202023}
+.primary,.btn-save{box-shadow:0 0 18px rgba(212,255,0,.18)}
+.cd .flag{color:var(--volt)}
+.cd{background:#131315}
+.cd.sel{box-shadow:inset 0 0 0 1px var(--volt),0 0 12px rgba(212,255,0,.25)}
+.types button[aria-pressed="true"],.seg4 button[aria-pressed="true"],.pick-tabs button[aria-pressed="true"],.minis button[aria-pressed="true"],.seg button[aria-pressed="true"]{box-shadow:0 0 14px rgba(212,255,0,.25)}
+.pc.on{border-color:var(--volt)}
+.pc.on::after{background:var(--volt);color:var(--on-volt)}
+input,textarea,select{background:#0F0F11;border-color:#2B2B2F}
+input:focus,textarea:focus,select:focus{border-color:var(--volt);outline:none;box-shadow:0 0 0 2px rgba(212,255,0,.25)}
+button:focus-visible{outline:2px solid var(--volt);outline-offset:2px}
+.exc .last{background:#1C1F10}
+.total{background:#1C1F10;border:1px solid rgba(212,255,0,.25)}
+.total b{color:var(--volt)}
+.phase{background:#1C1F10;color:var(--volt)}
+.goal.next{border-color:var(--volt);box-shadow:inset 0 0 0 1px var(--volt)}
+.goal .gd b{color:var(--volt);font-style:italic}
+.goal.past .gd b{color:var(--muted)}
+.vnote{background:#1C1C1F}
+.bar{background:#26262A}
+.tide{margin-top:18px}
+.brand svg{width:clamp(40px,9vw,64px);height:clamp(40px,9vw,64px)}
+@media (min-width:561px){.day{grid-template-columns:88px minmax(0,1fr)}}

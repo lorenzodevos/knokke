@@ -97,12 +97,14 @@ function lastFor(exId,p,beforeDate,excludeId){
 // ================= HERO / WHO =================
 function renderHero(){
   const next=allGoals().find(g=>g.date>=TODAY);
-  if(next){const left=Math.round((pd(next.date)-T0)/864e5);
-    $("count").firstChild.nodeValue=left===0?"Vandaag!":left;
-    $("countLabel").textContent=left===0?next.title:(left===1?"dag tot ":"dagen tot ")+next.title;
-    $("heroGoal").innerHTML=`<b>${dayName(pd(next.date))} ${fd(pd(next.date))} ${pd(next.date).getFullYear()}</b>volgend doel`;
-  }else{$("count").firstChild.nodeValue="–";$("countLabel").textContent="Plan je volgende doel hieronder";$("heroGoal").innerHTML=""}
+  if(next){const d=pd(next.date),left=Math.round((d-T0)/864e5);
+    $("evDays").textContent=left===0?"GO":left;
+    $("evUnit").textContent=left===0?"vandaag!":(left===1?"dag":"dagen");
+    $("evTitle").textContent=next.title;
+    $("evDate").textContent=`${dayName(d)} ${fd(d)} ${d.getFullYear()}`;
+  }else{$("evDays").textContent="–";$("evUnit").textContent="";$("evTitle").textContent="Nog geen event gepland";$("evDate").textContent="Tik hier om een doel toe te voegen"}
 }
+$("eventCard").addEventListener("click",()=>{const el=$("goals-h");if(el)el.scrollIntoView({behavior:"smooth",block:"start"})});
 function renderWho(){document.querySelectorAll(".who button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.who===who)));
   const need=!who;document.querySelector(".who").classList.toggle("need",need);$("whoLabel").classList.toggle("need",need);
   $("whoLabel").textContent=need?"Tik eerst op je naam om te kunnen loggen":"Ingelogd als "+NAMES[who]+" op dit toestel"}

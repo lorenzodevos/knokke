@@ -1,17 +1,32 @@
 {
-  "name": "Trainingsapp Lorenzo & Nele",
-  "short_name": "Knokke 25K",
-  "description": "Trainingen loggen, doelen plannen en elkaar aanmoedigen",
+  "name": "VOLTAGE – Show up.",
+  "short_name": "VOLTAGE",
+  "description": "Trainingen loggen, events plannen en elkaar aanmoedigen",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1F3B45",
-  "theme_color": "#1F3B45",
+  "background_color": "#0B0B0C",
+  "theme_color": "#0B0B0C",
   "lang": "nl",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
