@@ -433,3 +433,13 @@ button:focus-visible{outline:2px solid var(--volt);outline-offset:2px}
 .sheet.ask .sub{font-size:15px;color:var(--ink);margin:8px 0 16px;line-height:1.45}
 #askOk.danger{background:var(--run);color:#fff;box-shadow:0 0 18px rgba(255,106,61,.25)}
 #askNo[hidden]{display:none}
+/* Buiten / loopband + 5 soorten run */
+.envsw{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.envsw button{border:1.5px solid var(--line);background:transparent;border-radius:12px;padding:11px 8px;cursor:pointer;font-weight:700;font-size:15px;color:var(--ink)}
+.envsw button[aria-pressed="true"]{border-color:var(--volt);background:#1C1F10;color:var(--volt)}
+.seg5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px}
+.seg5 button{border:1px solid var(--line);background:transparent;border-radius:8px;padding:9px 2px;cursor:pointer;font-weight:700;font-size:13px;color:var(--ink)}
+.seg5 button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary);border-color:var(--primary);box-shadow:0 0 14px rgba(212,255,0,.25)}
+.tmrow{border-top:1px dashed var(--line);padding-top:10px;margin-top:2px}
+.envsw button{font-family:var(--display);font-style:italic;font-weight:800;font-size:22px;letter-spacing:1px;text-transform:uppercase;padding:10px 8px}
+.envsw button[aria-pressed="true"]{background:var(--volt);color:var(--on-volt);box-shadow:0 0 14px rgba(212,255,0,.25)}

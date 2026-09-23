@@ -8,7 +8,8 @@ const DN=["Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag","Zonda
 const MN=["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
 const MNF=["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
 const KIND={upper:{l:"Upper",c:"var(--kracht)"},lower:{l:"Lower",c:"var(--grass)"},run:{l:"Run",c:"var(--run)"},rust:{l:"Rust",c:"var(--rust)"},race:{l:"Race",c:"var(--race)"},event:{l:"Event",c:"var(--kino)"}};
-const RT={interval:"Interval",long:"Long run",tempo:"Tempo run",z2:"Zone 2 run"};
+const RT={interval:"Interval",long:"Long run",tempo:"Tempo run",z2:"Zone 2 run",walk:"Helling wandelen"};
+const RT_SHORT={interval:"Interval",long:"Long",tempo:"Tempo",z2:"Zone 2",walk:"Helling"};
 const ZONES=["","Z1","Z2","Z3","Z4","Z5"];
 const GROUPS={upper:["Borst","Rug","Schouders","Biceps","Triceps","Core"],lower:["Quadriceps","Hamstrings","Bilspieren","Adductoren","Kuiten","Core"]};
 const QUICK=["Goed gedaan! 💪","Trots op jou ❤️","Beest! 🔥","Sterk volgehouden 👏"];
@@ -75,13 +76,19 @@ function goalOn(ds){return allGoals().filter(g=>g.date===ds)}
 function runKm(d){if(!d)return 0;
   if(d.rt==="interval"){let k=(num(d.wu)||0)+(num(d.cd)||0);(d.blocks||[]).forEach(b=>{if(b.mode!=="time")k+=(num(b.reps)||0)*(num(b.dist)||0)/1000});return k}
   if(d.rt==="tempo")return (num(d.wu)||0)+(num(d.tdist)||0)+(num(d.cd)||0);
-  return num(d.dist)||0}
-function woTitle(w){const base=w.kind==="run"?(RT[w.data&&w.data.rt]||"Run"):KIND[w.kind].l;const tn=w.data&&w.data.tplName;return tn?`${base} · ${tn}`:base}
+  const dist=num(d.dist);if(dist)return dist;
+  if(num(d.speed)&&num(d.min))return num(d.speed)*num(d.min)/60; // loopband: snelheid × tijd
+  return 0}
+function isTM(d){return d&&(d.env==="tm")}
+function woTitle(w){const d=w.data||{};const base=w.kind==="run"?((RT[d.rt]||"Run")+(isTM(d)&&d.rt!=="walk"?" · loopband":"")):KIND[w.kind].l;const tn=w.data&&w.data.tplName;return tn?`${base} · ${tn}`:base}
 function woSummary(w){const d=w.data||{};
   if(w.kind==="run"){const k=d.km!=null?d.km:runKm(d);const bits=[];if(k)bits.push(nfmt(k)+" km");
     if(d.rt==="interval"&&d.blocks&&d.blocks.length)bits.push(d.blocks.map(b=>`${b.reps||"?"}×${b.mode==="time"?(b.time||"?")+" min":(b.dist||"?")+" m"}`).join(" + "));
     if(d.rt==="tempo"&&d.tmin)bits.push(d.tmin+" min tempo"+(d.zone?" "+d.zone:""));
     if(d.rt==="long"&&d.zone)bits.push(d.zone);
+    if((d.rt==="walk"||isTM(d))&&d.incline)bits.push(nfmt(d.incline)+"% helling");
+    if((d.rt==="walk"||isTM(d))&&d.speed)bits.push(nfmt(d.speed)+" km/u");
+    if(d.rt==="walk"&&d.min)bits.push(d.min+" min");
     return bits.join(" · ")||"Geen details"}
   const ex=d.ex||[];const sets=ex.reduce((a,e)=>a+(e.sets||[]).length,0);
   if(!ex.length)return"Geen oefeningen";
@@ -354,10 +361,16 @@ function zoneSel(val,attr){return `<select ${attr}>${ZONES.map(z=>`<option value
 function inp(label,key,val,extra=""){return `<label>${label}<input type="number" inputmode="decimal" min="0" step="any" data-k="${key}" value="${val??""}" ${extra}></label>`}
 function renderRun(body){
   const d=ed.data;
-  const seg=document.createElement("div");seg.className="seg4";seg.setAttribute("role","group");seg.setAttribute("aria-label","Soort run");
-  seg.innerHTML=Object.entries(RT).map(([k,l])=>`<button data-rt="${k}" aria-pressed="${d.rt===k}">${l.replace(" run","")}</button>`).join("");
+  const tm=isTM(d);
+  const env=document.createElement("div");env.className="envsw";env.setAttribute("role","group");env.setAttribute("aria-label","Waar liep je?");
+  env.innerHTML=`<button type="button" data-env="out" aria-pressed="${!tm}">Buiten</button><button type="button" data-env="tm" aria-pressed="${tm}">Loopband</button>`;
+  body.appendChild(env);
+  env.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{d.env=b.dataset.env;renderEditor()}));
+  const seg=document.createElement("div");seg.className="seg5";seg.setAttribute("role","group");seg.setAttribute("aria-label","Soort run");
+  seg.innerHTML=Object.keys(RT).map(k=>`<button data-rt="${k}" aria-pressed="${d.rt===k}">${RT_SHORT[k]}</button>`).join("");
   body.appendChild(seg);
-  seg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{if(d.rt===b.dataset.rt)return;const keep={rt:b.dataset.rt};if(keep.rt==="interval")keep.blocks=[newBlock()];ed.data=keep;renderEditor()}));
+  seg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{if(d.rt===b.dataset.rt)return;const keep={rt:b.dataset.rt,env:b.dataset.rt==="walk"&&!d.env?"tm":d.env};if(keep.rt==="interval")keep.blocks=[newBlock()];ed.data=keep;renderEditor()}));
+  const tmf=(sp,inc)=>`<div class="grid2 tmrow">${inp("Snelheid (km/u)",sp,d[sp])}${inp("Helling (%)",inc,d[inc])}</div>`;
   const box=document.createElement("div");
   if(d.rt==="interval"){
     if(!d.blocks)d.blocks=[newBlock()];
@@ -366,16 +379,18 @@ function renderRun(body){
         <div class="grid2"><label>Herhalingen<input type="number" inputmode="numeric" min="1" data-b="${bi}" data-bf="reps" value="${b.reps??""}"></label>
         <label>Per interval<div class="minis" style="margin-top:4px"><button type="button" data-bm="${bi}:dist" aria-pressed="${b.mode!=="time"}">Afstand</button><button type="button" data-bm="${bi}:time" aria-pressed="${b.mode==="time"}">Tijd</button></div></label></div>
         <div class="grid3">${b.mode==="time"?`<label>Duur (min)<input type="number" inputmode="decimal" min="0" step="any" data-b="${bi}" data-bf="time" value="${b.time??""}"></label>`:`<label>Afstand (m)<input type="number" inputmode="numeric" min="0" data-b="${bi}" data-bf="dist" value="${b.dist??""}"></label>`}
-        <label>Tempo (/km)<input type="text" inputmode="numeric" placeholder="4:30" data-b="${bi}" data-bf="pace" value="${esc(b.pace||"")}"></label>
+        ${tm?`<label>Snelheid (km/u)<input type="number" inputmode="decimal" min="0" step="any" data-b="${bi}" data-bf="speed" value="${b.speed??""}"></label>`:`<label>Tempo (/km)<input type="text" inputmode="numeric" placeholder="4:30" data-b="${bi}" data-bf="pace" value="${esc(b.pace||"")}"></label>`}
         <label>Rust (min)<input type="number" inputmode="decimal" min="0" step="any" data-b="${bi}" data-bf="rest" value="${b.rest??""}"></label></div>
-        <div class="grid2"><label>Hartslagzone${zoneSel(b.zone,`data-b="${bi}" data-bf="zone"`)}</label><label>Gem. hartslag<input type="number" inputmode="numeric" min="0" data-b="${bi}" data-bf="hr" value="${b.hr??""}"></label></div></div>`).join("")+
+        <div class="grid${tm?3:2}">${tm?`<label>Helling (%)<input type="number" inputmode="decimal" min="0" step="any" data-b="${bi}" data-bf="incline" value="${b.incline??""}"></label>`:""}<label>Hartslagzone${zoneSel(b.zone,`data-b="${bi}" data-bf="zone"`)}</label><label>Gem. hartslag<input type="number" inputmode="numeric" min="0" data-b="${bi}" data-bf="hr" value="${b.hr??""}"></label></div></div>`).join("")+
       `<button class="linkbtn" id="addBlock">+ Intervalblok toevoegen</button>`;
   }else if(d.rt==="long"){
-    box.innerHTML=`<div class="grid2">${inp("Afstand (km)","dist",d.dist)}<label>Hartslagzone${zoneSel(d.zone,'data-k="zone"')}</label>${inp("Duur (min)","min",d.min)}${inp("Gem. hartslag","hr",d.hr)}</div>`;
+    box.innerHTML=`<div class="grid2">${inp("Afstand (km)","dist",d.dist)}<label>Hartslagzone${zoneSel(d.zone,'data-k="zone"')}</label>${inp("Duur (min)","min",d.min)}${inp("Gem. hartslag","hr",d.hr)}</div>${tm?tmf("speed","incline"):""}`;
   }else if(d.rt==="tempo"){
-    box.innerHTML=`${inp("Opwarming (km)","wu",d.wu)}<div class="sub-h">Tempoblok</div><div class="grid3">${inp("Minuten","tmin",d.tmin)}${inp("Afstand (km)","tdist",d.tdist)}<label>Zone${zoneSel(d.zone,'data-k="zone"')}</label></div>${inp("Cooldown (km)","cd",d.cd)}`;
+    box.innerHTML=`${inp("Opwarming (km)","wu",d.wu)}<div class="sub-h">Tempoblok</div><div class="grid3">${inp("Minuten","tmin",d.tmin)}${inp("Afstand (km)","tdist",d.tdist)}<label>Zone${zoneSel(d.zone,'data-k="zone"')}</label></div>${tm?tmf("tspeed","tincline"):""}${inp("Cooldown (km)","cd",d.cd)}`;
+  }else if(d.rt==="walk"){
+    box.innerHTML=`<div class="grid3">${inp("Duur (min)","min",d.min)}${inp("Snelheid (km/u)","speed",d.speed)}${inp("Helling (%)","incline",d.incline)}</div><div class="grid3">${inp("Afstand (km)","dist",d.dist,'placeholder="auto"')}<label>Hartslagzone${zoneSel(d.zone,'data-k="zone"')}</label>${inp("Gem. hartslag","hr",d.hr)}</div><p class="note-s" style="margin-top:0">Laat afstand leeg: de app rekent ze uit met snelheid × duur.</p>`;
   }else{
-    box.innerHTML=`${inp("Afstand (km)","dist",d.dist)}`;
+    box.innerHTML=tm?`<div class="grid2">${inp("Afstand (km)","dist",d.dist)}${inp("Duur (min)","min",d.min)}</div>${tmf("speed","incline")}`:`${inp("Afstand (km)","dist",d.dist)}`;
   }
   body.appendChild(box);
   const tot=document.createElement("div");tot.className="total";tot.id="runTotal";body.appendChild(tot);updTotal();
@@ -436,7 +451,11 @@ function openView(id){const w=byId[id];if(!w)return;viewId=id;const d=pd(w.date)
     if(x.rt==="long"){if(x.zone)kv.push(["zone",x.zone]);if(x.min)kv.push(["minuten",x.min]);if(x.hr)kv.push(["gem. hartslag",x.hr])}
     if(x.rt==="tempo"){if(x.wu)kv.push(["opwarming km",nfmt(x.wu)]);if(x.tmin)kv.push(["tempo min",x.tmin]);if(x.tdist)kv.push(["tempo km",nfmt(x.tdist)]);if(x.zone)kv.push(["zone",x.zone]);if(x.cd)kv.push(["cooldown km",nfmt(x.cd)])}
     if(x.rt==="interval"){if(x.wu)kv.push(["opwarming km",nfmt(x.wu)]);if(x.cd)kv.push(["cooldown km",nfmt(x.cd)])}
-    b.innerHTML=`<div class="kv">${kv.map(([l,v])=>`<div><b>${esc(v)}</b>${l}</div>`).join("")}</div>`+(x.rt==="interval"?(x.blocks||[]).map((bl,i)=>`<div class="ivl"><b>Blok ${i+1}:</b> ${bl.reps||"?"} × ${bl.mode==="time"?(bl.time||"?")+" min":(bl.dist||"?")+" m"}${bl.pace?" · "+esc(bl.pace)+"/km":""}${bl.zone?" · "+bl.zone:""}${bl.hr?" · "+bl.hr+" bpm":""}${bl.rest!=null?" · rust "+nfmt(bl.rest)+" min":""}</div>`).join(""):"")}
+    if(x.rt==="walk"||x.rt==="z2"){if(x.min)kv.push(["minuten",x.min]);if(x.zone)kv.push(["zone",x.zone]);if(x.hr)kv.push(["gem. hartslag",x.hr])}
+    if(x.speed)kv.push(["km/u",nfmt(x.speed)]);if(x.incline)kv.push(["% helling",nfmt(x.incline)]);
+    if(x.tspeed)kv.push(["km/u tempo",nfmt(x.tspeed)]);if(x.tincline)kv.push(["% helling tempo",nfmt(x.tincline)]);
+    kv.unshift(["waar",isTM(x)?"Loopband":"Buiten"]);
+    b.innerHTML=`<div class="kv">${kv.map(([l,v])=>`<div><b>${esc(v)}</b>${l}</div>`).join("")}</div>`+(x.rt==="interval"?(x.blocks||[]).map((bl,i)=>`<div class="ivl"><b>Blok ${i+1}:</b> ${bl.reps||"?"} × ${bl.mode==="time"?(bl.time||"?")+" min":(bl.dist||"?")+" m"}${bl.pace?" · "+esc(bl.pace)+"/km":""}${bl.speed?" · "+nfmt(bl.speed)+" km/u":""}${bl.incline?" · "+nfmt(bl.incline)+"% helling":""}${bl.zone?" · "+bl.zone:""}${bl.hr?" · "+bl.hr+" bpm":""}${bl.rest!=null?" · rust "+nfmt(bl.rest)+" min":""}</div>`).join(""):"")}
   else{b.innerHTML=(x.ex||[]).map(e=>{const m=EX[e.id]||{n:e.id,g:""};return `<div class="vex"><img src="${imgSrc(e.id)}" data-ex="${e.id}" alt="${esc(m.n)}" loading="lazy"><div><b>${esc(m.n)}</b><div class="ss">${esc(m.g)}</div><div>${(e.sets||[]).length?esc(setsTxt(e.sets)):"Geen sets ingevuld"}</div></div></div>`}).join("")||`<p class="dayempty">Geen oefeningen ingevuld.</p>`+(x.min?`<p class="note-s">${x.min} minuten</p>`:"");
     b.querySelectorAll("img").forEach(im=>im.addEventListener("click",()=>lightbox(im.src)))}
   $("vNote").innerHTML=w.note?`<div class="vnote">${esc(w.note)}</div>`:"";
